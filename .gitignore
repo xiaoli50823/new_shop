@@ -1,0 +1,17 @@
+# 依赖包
+node_modules/
+/client/node_modules/
+/server/node_modules/
+
+# 构建产物 & 缓存
+/client/dist/
+/server/dist/
+*.log
+.DS_Store
+.vite/
+vite.config.*.timestamp*
+vite.config.*.hash*
+
+# 环境变量
+.env
+.env.local
