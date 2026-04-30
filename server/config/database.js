@@ -4,7 +4,7 @@ require('dotenv').config();
 const sequelize = new Sequelize(
   process.env.DB_NAME || 'blind_box_shop',
   process.env.DB_USER || 'root',
-  process.env.DB_PASS || '',
+  process.env.DB_PASS || '123456',
   {
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '3306'),
