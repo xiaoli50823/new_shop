@@ -1,364 +1,514 @@
 <template>
   <div class="blind-box-manage">
-    <!-- 操作按钮 -->
-    <div class="actions">
-      <el-button type="primary" @click="showCreateDialog = true">创建盲盒</el-button>
-      <el-button type="success" @click="exportData">导出数据</el-button>
+    <!-- 顶部操作栏 -->
+    <div class="card filter-bar">
+      <div class="filter-row">
+        <el-input
+          v-model="searchKeyword"
+          placeholder="搜索盲盒名称"
+          clearable
+          style="width: 240px"
+          @keyup.enter="handleSearch"
+        >
+          <template #prefix><el-icon><Search /></el-icon></template>
+        </el-input>
+        <el-select v-model="filterType" placeholder="类型筛选" clearable style="width: 150px">
+          <el-option label="全部" value="" />
+          <el-option label="一番赏" value="lottery" />
+          <el-option label="无限盲盒" value="infinite" />
+          <el-option label="哈希盲盒" value="hash" />
+        </el-select>
+        <el-select v-model="filterStatus" placeholder="状态筛选" clearable style="width: 130px">
+          <el-option label="全部" value="" />
+          <el-option label="上架" value="active" />
+          <el-option label="下架" value="inactive" />
+        </el-select>
+        <el-button @click="resetFilter">重置</el-button>
+        <div class="filter-right">
+          <el-button type="primary" @click="openCreateDialog">
+            <el-icon><Plus /></el-icon>创建盲盒
+          </el-button>
+          <el-button @click="exportData">
+            <el-icon><Download /></el-icon>导出数据
+          </el-button>
+        </div>
+      </div>
     </div>
 
-    <!-- 盲盒列表 -->
-    <div class="blind-box-list">
-      <el-table :data="blindBoxes" style="width: 100%">
-        <el-table-column prop="id" label="ID" width="80"></el-table-column>
-        <el-table-column prop="name" label="盲盒名称"></el-table-column>
-        <el-table-column prop="price" label="售价" width="100">
-          <template #default="scope">¥{{ scope.row.price }}</template>
+    <!-- 表格 -->
+    <div class="card">
+      <el-table
+        :data="filteredBoxes"
+        stripe
+        border
+        v-loading="loading"
+        style="width: 100%"
+      >
+        <el-table-column prop="id" label="ID" width="80" />
+        <el-table-column prop="name" label="名称" min-width="160" show-overflow-tooltip />
+        <el-table-column label="售价" width="100">
+          <template #default="{ row }">
+            <span class="price-text">¥{{ row.price }}</span>
+          </template>
         </el-table-column>
-        <el-table-column prop="type" label="类型" width="120">
-          <template #default="scope">
-            <el-tag :type="scope.row.type === 'lottery' ? 'warning' : scope.row.type === 'infinite' ? 'primary' : 'info'">
-              {{ scope.row.type === 'lottery' ? '一番赏' : scope.row.type === 'infinite' ? '无限盲盒' : '哈希盲盒' }}
+        <el-table-column label="类型" width="110">
+          <template #default="{ row }">
+            <el-tag :type="typeTagMap[row.type]?.type || 'info'" size="small">
+              {{ typeTagMap[row.type]?.label || row.type }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
-          <template #default="scope">
-            <el-tag :type="scope.row.status === 'active' ? 'success' : 'info'">
-              {{ scope.row.status === 'active' ? '上架' : '下架' }}
+        <el-table-column label="状态" width="90">
+          <template #default="{ row }">
+            <el-tag :type="row.status === 'active' ? 'success' : 'info'" size="small">
+              {{ row.status === 'active' ? '上架' : '下架' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="创建时间" width="180"></el-table-column>
-        <el-table-column prop="totalDraws" label="总抽盒次数" width="120"></el-table-column>
-        <el-table-column label="操作" width="200">
-          <template #default="scope">
-            <el-button type="primary" size="small" @click="editBlindBox(scope.row)">编辑</el-button>
-            <el-button type="success" size="small" @click="toggleStatus(scope.row)">
-              {{ scope.row.status === 'active' ? '下架' : '上架' }}
+        <el-table-column prop="stock" label="库存" width="90" />
+        <el-table-column prop="totalDraws" label="总抽盒次数" width="120" />
+        <el-table-column prop="createdAt" label="创建时间" width="170" />
+        <el-table-column label="操作" width="220" fixed="right">
+          <template #default="{ row }">
+            <el-button type="primary" link size="small" @click="openEditDialog(row)">编辑</el-button>
+            <el-button
+              :type="row.status === 'active' ? 'warning' : 'success'"
+              link size="small"
+              @click="toggleStatus(row)"
+            >
+              {{ row.status === 'active' ? '下架' : '上架' }}
             </el-button>
-            <el-button type="danger" size="small" @click="deleteBlindBox(scope.row.id)">删除</el-button>
+            <el-popconfirm title="确定删除该盲盒吗？" @confirm="handleDelete(row)">
+              <template #reference>
+                <el-button type="danger" link size="small">删除</el-button>
+              </template>
+            </el-popconfirm>
           </template>
         </el-table-column>
       </el-table>
+      <div class="table-footer">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :total="totalCount"
+          :page-sizes="[10, 20, 50]"
+          layout="total, sizes, prev, pager, next"
+          @size-change="loadList"
+          @current-change="loadList"
+        />
+      </div>
     </div>
 
-    <!-- 创建/编辑盲盒弹窗 -->
+    <!-- 创建/编辑弹窗 -->
     <el-dialog
-      v-model="showCreateDialog"
-      :title="isEditing ? '编辑盲盒' : '创建盲盒'"
+      v-model="dialogVisible"
+      :title="isEdit ? '编辑盲盒' : '创建盲盒'"
       width="800px"
+      destroy-on-close
+      @closed="resetForm"
     >
-      <el-form :model="blindBoxForm" label-width="120px">
-        <el-form-item label="盲盒名称">
-          <el-input v-model="blindBoxForm.name" placeholder="请输入盲盒名称"></el-input>
+      <el-form ref="formRef" :model="form" :rules="formRules" label-width="120px">
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="盲盒名称" prop="name">
+              <el-input v-model="form.name" placeholder="请输入盲盒名称" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="售价" prop="price">
+              <el-input-number v-model="form.price" :min="0" :precision="2" :step="1" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="类型" prop="type">
+              <el-radio-group v-model="form.type">
+                <el-radio value="lottery">一番赏</el-radio>
+                <el-radio value="infinite">无限盲盒</el-radio>
+                <el-radio value="hash">哈希盲盒</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="状态">
+              <el-switch v-model="form.status" active-value="active" inactive-value="inactive" active-text="上架" inactive-text="下架" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item label="描述">
+          <el-input v-model="form.description" type="textarea" :rows="3" placeholder="请输入盲盒描述" />
         </el-form-item>
-        <el-form-item label="售价">
-          <el-input-number v-model="blindBoxForm.price" :min="0" :step="0.01" placeholder="请输入售价"></el-input-number>
-        </el-form-item>
-        <el-form-item label="盲盒类型">
-          <el-radio-group v-model="blindBoxForm.type">
-            <el-radio label="lottery">一番赏</el-radio>
-            <el-radio label="infinite">无限盲盒</el-radio>
-            <el-radio label="hash">哈希盲盒</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="封面图">
-          <el-upload
-            class="upload-demo"
-            action="#"
-            :auto-upload="false"
-            :on-change="handleImageUpload"
-            :file-list="fileList"
-          >
-            <el-button type="primary">上传封面图</el-button>
-          </el-upload>
-        </el-form-item>
-        <el-form-item label="发售时间">
-          <el-date-picker
-            v-model="blindBoxForm.saleTime"
-            type="datetime"
-            placeholder="选择发售时间"
-            style="width: 100%"
-          ></el-date-picker>
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-switch v-model="blindBoxForm.status" active-value="active" inactive-value="inactive"></el-switch>
-        </el-form-item>
-        <el-form-item label="奖池配置">
-          <div class="prize-config">
-            <el-button type="primary" size="small" @click="addPrize">添加奖品</el-button>
-            <el-table :data="blindBoxForm.prizes" style="width: 100%" margin-top="10px">
-              <el-table-column prop="name" label="奖品名称"></el-table-column>
-              <el-table-column prop="probability" label="概率(%)">
-                <template #default="scope">
-                  <el-input-number v-model="scope.row.probability" :min="0" :max="100" :step="0.1"></el-input-number>
-                </template>
-              </el-table-column>
-              <el-table-column prop="stock" label="库存">
-                <template #default="scope">
-                  <el-input-number v-model="scope.row.stock" :min="0"></el-input-number>
-                </template>
-              </el-table-column>
-              <el-table-column label="操作" width="100">
-                <template #default="scope">
-                  <el-button type="danger" size="small" @click="removePrize(scope.$index)">删除</el-button>
-                </template>
-              </el-table-column>
-            </el-table>
-          </div>
-        </el-form-item>
-        <el-form-item label="保底机制">
-          <el-input-number v-model="blindBoxForm.guarantee" :min="0" placeholder="设置X抽必中指定奖品"></el-input-number>
-        </el-form-item>
-        <el-form-item label="防爆雷风控">
-          <el-input-number v-model="blindBoxForm.maxHidden" :min="0" placeholder="全站最多产出隐藏款数量"></el-input-number>
-        </el-form-item>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="封面图URL">
+              <el-input v-model="form.coverUrl" placeholder="输入图片URL" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="发售时间">
+              <el-date-picker v-model="form.saleTime" type="datetime" placeholder="选择发售时间" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16">
+          <el-col :span="8">
+            <el-form-item label="库存">
+              <el-input-number v-model="form.stock" :min="0" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="保底机制">
+              <el-input-number v-model="form.guarantee" :min="0" style="width: 100%" />
+            </el-form-item>
+            <div class="form-tip">X抽必中</div>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="防爆雷">
+              <el-input-number v-model="form.maxHidden" :min="0" style="width: 100%" />
+            </el-form-item>
+            <div class="form-tip">隐藏款最大产出</div>
+          </el-col>
+        </el-row>
+
+        <!-- 奖池配置 -->
+        <el-divider content-position="left">奖池配置</el-divider>
+        <div class="pool-header">
+          <el-button type="primary" size="small" @click="addPrize">
+            <el-icon><Plus /></el-icon>添加奖品
+          </el-button>
+          <span class="pool-total" :class="{ 'pool-error': probabilityTotal > 100, 'pool-ok': probabilityTotal === 100 }">
+            概率总和: {{ probabilityTotal }}%
+          </span>
+        </div>
+        <el-table :data="form.prizes" border size="small" style="width: 100%">
+          <el-table-column label="奖品名称" min-width="160">
+            <template #default="{ row }">
+              <el-input v-model="row.name" size="small" placeholder="奖品名称" />
+            </template>
+          </el-table-column>
+          <el-table-column label="概率(%)" width="120">
+            <template #default="{ row }">
+              <el-input-number v-model="row.probability" :min="0" :max="100" :precision="1" size="small" controls-position="right" style="width: 100%" />
+            </template>
+          </el-table-column>
+          <el-table-column label="库存" width="100">
+            <template #default="{ row }">
+              <el-input-number v-model="row.stock" :min="0" size="small" controls-position="right" style="width: 100%" />
+            </template>
+          </el-table-column>
+          <el-table-column label="稀有度" width="120">
+            <template #default="{ row }">
+              <el-select v-model="row.rarity" size="small" style="width: 100%">
+                <el-option label="普通" value="normal" />
+                <el-option label="稀有" value="rare" />
+                <el-option label="超稀有" value="super_rare" />
+                <el-option label="隐藏款" value="hidden" />
+              </el-select>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="70" align="center">
+            <template #default="{ $index }">
+              <el-button type="danger" link size="small" @click="removePrize($index)">
+                <el-icon><Delete /></el-icon>
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
       </el-form>
       <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="showCreateDialog = false">取消</el-button>
-          <el-button type="primary" @click="saveBlindBox">保存</el-button>
-        </span>
+        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="submitting" @click="submitForm">确认</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
-import { blindBoxAPI } from '../../services/api'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { Search, Plus, Download, Delete } from '@element-plus/icons-vue'
+import api from '../../services/api'
 
-// 盲盒列表数据
-const blindBoxes = ref([
-  {
-    id: 1,
-    name: '海贼王一番赏',
-    price: 50,
-    type: 'lottery',
-    status: 'active',
-    createdAt: '2026-04-15 10:00:00',
-    totalDraws: 1200
-  },
-  {
-    id: 2,
-    name: '火影忍者一番赏',
-    price: 50,
-    type: 'lottery',
-    status: 'active',
-    createdAt: '2026-04-14 14:30:00',
-    totalDraws: 850
-  },
-  {
-    id: 3,
-    name: '潮玩盲盒',
-    price: 39,
-    type: 'infinite',
-    status: 'active',
-    createdAt: '2026-04-13 09:15:00',
-    totalDraws: 1500
-  },
-  {
-    id: 4,
-    name: '美妆盲盒',
-    price: 69,
-    type: 'infinite',
-    status: 'inactive',
-    createdAt: '2026-04-12 16:45:00',
-    totalDraws: 980
-  },
-  {
-    id: 5,
-    name: '区块链盲盒',
-    price: 199,
-    type: 'hash',
-    status: 'active',
-    createdAt: '2026-04-11 11:20:00',
-    totalDraws: 750
+const loading = ref(false)
+const submitting = ref(false)
+const searchKeyword = ref('')
+const filterType = ref('')
+const filterStatus = ref('')
+const currentPage = ref(1)
+const pageSize = ref(10)
+const totalCount = ref(0)
+
+const typeTagMap: Record<string, { type: string; label: string }> = {
+  lottery: { type: 'warning', label: '一番赏' },
+  infinite: { type: '', label: '无限盲盒' },
+  hash: { type: 'info', label: '哈希盲盒' }
+}
+
+// 盲盒列表
+const boxList = ref<any[]>([])
+
+const filteredBoxes = computed(() => {
+  let list = boxList.value
+  if (searchKeyword.value) {
+    list = list.filter(b => b.name?.includes(searchKeyword.value))
   }
-])
+  if (filterType.value) {
+    list = list.filter(b => b.type === filterType.value)
+  }
+  if (filterStatus.value) {
+    list = list.filter(b => b.status === filterStatus.value)
+  }
+  return list
+})
 
-// 弹窗状态
-const showCreateDialog = ref(false)
-const isEditing = ref(false)
+// 弹窗
+const dialogVisible = ref(false)
+const isEdit = ref(false)
+const formRef = ref<FormInstance>()
 
-// 盲盒表单
-const blindBoxForm = reactive({
-  id: 0,
+const defaultForm = () => ({
+  id: '',
   name: '',
   price: 0,
-  type: 'infinite',
-  status: 'active',
-  saleTime: new Date(),
-  prizes: [],
+  type: 'infinite' as string,
+  description: '',
+  coverUrl: '',
+  saleTime: null as Date | null,
+  status: 'active' as string,
+  stock: 0,
   guarantee: 0,
-  maxHidden: 0
+  maxHidden: 0,
+  prizes: [] as Array<{ name: string; probability: number; stock: number; rarity: string }>
 })
 
-// 文件列表
-const fileList = ref([])
+const form = reactive(defaultForm())
 
-// 加载盲盒列表
-const loadBlindBoxes = async () => {
-  try {
-    const boxes = await blindBoxAPI.getList()
-    if (Array.isArray(boxes)) {
-      blindBoxes.value = boxes.map(box => ({
-        ...box,
-        id: box._id,
-        createdAt: box.createdAt || new Date().toLocaleString(),
-        totalDraws: box.totalDraws || 0
-      }))
-    }
-  } catch (error) {
-    console.error('加载盲盒列表失败:', error)
-  }
+const formRules: FormRules = {
+  name: [{ required: true, message: '请输入盲盒名称', trigger: 'blur' }],
+  price: [{ required: true, message: '请输入售价', trigger: 'blur' }],
+  type: [{ required: true, message: '请选择类型', trigger: 'change' }]
 }
 
-// 页面加载时获取盲盒列表
-onMounted(() => {
-  loadBlindBoxes()
+const probabilityTotal = computed(() => {
+  return Math.round(form.prizes.reduce((sum, p) => sum + (p.probability || 0), 0) * 10) / 10
 })
 
-// 处理图片上传
-const handleImageUpload = (file) => {
-  fileList.value = [file]
-  // 实际项目中这里应该上传图片到服务器
-  console.log('上传图片:', file)
-}
-
-// 添加奖品
 const addPrize = () => {
-  blindBoxForm.prizes.push({
-    id: blindBoxForm.prizes.length + 1,
-    name: '',
-    probability: 0,
-    stock: 0
-  })
+  form.prizes.push({ name: '', probability: 0, stock: 0, rarity: 'normal' })
 }
 
-// 移除奖品
-const removePrize = (index) => {
-  blindBoxForm.prizes.splice(index, 1)
+const removePrize = (index: number) => {
+  form.prizes.splice(index, 1)
 }
 
-// 编辑盲盒
-const editBlindBox = (row) => {
-  isEditing.value = true
-  Object.assign(blindBoxForm, row)
-  // 实际项目中这里应该获取奖品详情
-  blindBoxForm.prizes = [
-    { id: 1, name: '路飞手办', probability: 1, stock: 10 },
-    { id: 2, name: '索隆手办', probability: 5, stock: 50 },
-    { id: 3, name: '娜美手办', probability: 5, stock: 50 },
-    { id: 4, name: '山治手办', probability: 20, stock: 200 },
-    { id: 5, name: '乌索普手办', probability: 20, stock: 200 },
-    { id: 6, name: '乔巴手办', probability: 49, stock: 490 }
-  ]
-  showCreateDialog.value = true
-}
-
-// 切换状态
-const toggleStatus = (row) => {
-  const newStatus = row.status === 'active' ? 'inactive' : 'active'
-  row.status = newStatus
-  ElMessage.success(`盲盒${newStatus === 'active' ? '上架' : '下架'}成功！`)
-}
-
-// 删除盲盒
-const deleteBlindBox = (id) => {
-  blindBoxes.value = blindBoxes.value.filter(box => box.id !== id)
-  ElMessage.success('盲盒删除成功！')
-}
-
-// 保存盲盒
-const saveBlindBox = async () => {
-  if (!blindBoxForm.name || !blindBoxForm.price) {
-    ElMessage.error('请填写完整的盲盒信息！')
-    return
-  }
-  
-  try {
-    if (isEditing.value) {
-      // 编辑模式
-      const updatedBox = await blindBoxAPI.update(blindBoxForm.id, blindBoxForm)
-      ElMessage.success('盲盒编辑成功！')
-    } else {
-      // 创建模式
-      const newBlindBox = await blindBoxAPI.create(blindBoxForm)
-      ElMessage.success('盲盒创建成功！')
-    }
-    // 重新加载盲盒列表
-    await loadBlindBoxes()
-  } catch (error) {
-    ElMessage.error('操作失败，请重试！')
-    console.error('保存盲盒失败:', error)
-  }
-  
-  showCreateDialog.value = false
-  resetForm()
-}
-
-// 重置表单
 const resetForm = () => {
-  Object.assign(blindBoxForm, {
-    id: 0,
-    name: '',
-    price: 0,
-    type: 'infinite',
-    status: 'active',
-    saleTime: new Date(),
-    prizes: [],
-    guarantee: 0,
-    maxHidden: 0
-  })
-  fileList.value = []
-  isEditing.value = false
+  Object.assign(form, defaultForm())
+  isEdit.value = false
 }
 
-// 导出数据
-const exportData = () => {
-  ElMessage.success('数据导出成功！')
-  // 实际项目中这里应该实现导出功能
+const openCreateDialog = () => {
+  resetForm()
+  dialogVisible.value = true
 }
+
+const openEditDialog = (row: any) => {
+  isEdit.value = true
+  Object.assign(form, {
+    id: row._id || row.id,
+    name: row.name || '',
+    price: row.price || 0,
+    type: row.type || 'infinite',
+    description: row.description || '',
+    coverUrl: row.coverUrl || row.cover || '',
+    saleTime: row.saleTime ? new Date(row.saleTime) : null,
+    status: row.status || 'active',
+    stock: row.stock || 0,
+    guarantee: row.guarantee || 0,
+    maxHidden: row.maxHidden || 0,
+    prizes: (row.prizes || []).map((p: any) => ({
+      name: p.name || '',
+      probability: p.probability || 0,
+      stock: p.stock || 0,
+      rarity: p.rarity || 'normal'
+    }))
+  })
+  dialogVisible.value = true
+}
+
+const submitForm = async () => {
+  if (!formRef.value) return
+  await formRef.value.validate(async (valid) => {
+    if (!valid) return
+    submitting.value = true
+    try {
+      const payload = {
+        name: form.name,
+        price: form.price,
+        type: form.type,
+        description: form.description,
+        coverUrl: form.coverUrl,
+        saleTime: form.saleTime,
+        status: form.status,
+        stock: form.stock,
+        guarantee: form.guarantee,
+        maxHidden: form.maxHidden,
+        prizes: form.prizes
+      }
+      if (isEdit.value) {
+        await api.put(`/blind-boxes/${form.id}`, payload)
+        ElMessage.success('编辑成功')
+      } else {
+        await api.post('/blind-boxes', payload)
+        ElMessage.success('创建成功')
+      }
+      dialogVisible.value = false
+      loadList()
+    } catch (e: any) {
+      ElMessage.error(e?.message || '操作失败')
+    } finally {
+      submitting.value = false
+    }
+  })
+}
+
+const toggleStatus = async (row: any) => {
+  try {
+    const newStatus = row.status === 'active' ? 'inactive' : 'active'
+    await api.put(`/blind-boxes/${row._id || row.id}`, { status: newStatus })
+    row.status = newStatus
+    ElMessage.success(newStatus === 'active' ? '已上架' : '已下架')
+  } catch (e: any) {
+    ElMessage.error(e?.message || '操作失败')
+  }
+}
+
+const handleDelete = async (row: any) => {
+  try {
+    await api.delete(`/blind-boxes/${row._id || row.id}`)
+    ElMessage.success('删除成功')
+    loadList()
+  } catch (e: any) {
+    ElMessage.error(e?.message || '删除失败')
+  }
+}
+
+const handleSearch = () => {
+  currentPage.value = 1
+  loadList()
+}
+
+const resetFilter = () => {
+  searchKeyword.value = ''
+  filterType.value = ''
+  filterStatus.value = ''
+  currentPage.value = 1
+  loadList()
+}
+
+const exportData = () => {
+  ElMessage.success('数据导出成功')
+}
+
+const loadList = async () => {
+  loading.value = true
+  try {
+    const res: any = await api.get('/blind-boxes', {
+      params: {
+        page: currentPage.value,
+        pageSize: pageSize.value,
+        keyword: searchKeyword.value,
+        type: filterType.value,
+        status: filterStatus.value
+      }
+    })
+    const data = res?.data || res || {}
+    boxList.value = (data.list || data || []).map((b: any) => ({
+      ...b,
+      id: b._id || b.id
+    }))
+    totalCount.value = data.total || boxList.value.length
+  } catch {
+    boxList.value = []
+    totalCount.value = 0
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  loadList()
+})
 </script>
 
 <style scoped>
 .blind-box-manage {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
-.actions {
-  display: flex;
-  gap: 10px;
-}
-
-.blind-box-list {
-  background-color: white;
-  padding: 20px;
+.card {
+  background: #ffffff;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  padding: 20px;
 }
 
-.prize-config {
-  margin-top: 10px;
+.filter-bar {
+  padding: 16px 20px;
 }
 
-.dialog-footer {
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.filter-right {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+
+.price-text {
+  color: #FF4D4F;
+  font-weight: 600;
+}
+
+.table-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
+  margin-top: 16px;
 }
 
-@media (max-width: 768px) {
-  .actions {
-    flex-direction: column;
-  }
-  
-  .blind-box-list {
-    padding: 10px;
-  }
+.form-tip {
+  font-size: 12px;
+  color: #909399;
+  margin-top: -8px;
+  margin-bottom: 12px;
+  padding-left: 120px;
+}
+
+.pool-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.pool-total {
+  font-size: 14px;
+  font-weight: 500;
+  color: #606266;
+}
+
+.pool-total.pool-error {
+  color: #FF4D4F;
+}
+
+.pool-total.pool-ok {
+  color: #52C41A;
 }
 </style>

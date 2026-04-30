@@ -1,89 +1,67 @@
-const mongoose = require('mongoose');
+/**
+ * 订单模型 - Sequelize
+ */
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/database');
 
-const orderSchema = new mongoose.Schema({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+const Order = sequelize.define('Order', {
+  id: {
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
+    primaryKey: true
+  },
+  order_no: {
+    type: DataTypes.STRING(50),
+    unique: true,
+    allowNull: false
+  },
+  user_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: { model: 'users', key: 'id' }
   },
   type: {
-    type: String,
-    enum: ['purchase', 'shipment'],
-    required: true
+    type: DataTypes.ENUM('purchase', 'shipment', 'draw'),
+    allowNull: false
   },
   status: {
-    type: String,
-    enum: ['pending', 'paid', 'shipping', 'completed', 'cancelled'],
-    default: 'pending'
+    type: DataTypes.ENUM('pending', 'paid', 'shipping', 'completed', 'cancelled'),
+    defaultValue: 'pending'
   },
   total: {
-    type: Number,
-    required: true
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false
   },
-  items: [
-    {
-      blindBoxId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'BlindBox'
-      },
-      productId: {
-        type: Number
-      },
-      name: {
-        type: String,
-        required: true
-      },
-      image: {
-        type: String
-      },
-      price: {
-        type: Number,
-        required: true
-      },
-      quantity: {
-        type: Number,
-        required: true
-      }
-    }
-  ],
-  shippingInfo: {
-    address: {
-      type: String
-    },
-    contact: {
-      type: String
-    },
-    phone: {
-      type: String
-    },
-    trackingNumber: {
-      type: String
-    }
+  shipping_address: {
+    type: DataTypes.STRING(500),
+    allowNull: true
   },
-  paymentInfo: {
-    method: {
-      type: String
-    },
-    transactionId: {
-      type: String
-    }
+  shipping_contact: {
+    type: DataTypes.STRING(50),
+    allowNull: true
   },
-  createdAt: {
-    type: Date,
-    default: Date.now
+  shipping_phone: {
+    type: DataTypes.STRING(20),
+    allowNull: true
   },
-  updatedAt: {
-    type: Date,
-    default: Date.now
+  tracking_number: {
+    type: DataTypes.STRING(100),
+    allowNull: true
+  },
+  express_company: {
+    type: DataTypes.STRING(50),
+    allowNull: true
+  },
+  payment_method: {
+    type: DataTypes.STRING(50),
+    allowNull: true
+  },
+  transaction_id: {
+    type: DataTypes.STRING(100),
+    allowNull: true
   }
+}, {
+  tableName: 'orders'
 });
-
-// 保存前更新updatedAt
-orderSchema.pre('save', function(next) {
-  this.updatedAt = new Date();
-  next();
-});
-
-const Order = mongoose.model('Order', orderSchema);
 
 module.exports = Order;

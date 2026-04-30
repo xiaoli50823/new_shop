@@ -1,89 +1,76 @@
-const mongoose = require('mongoose');
+/**
+ * 盲盒模型 - Sequelize
+ */
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/database');
 
-const blindBoxSchema = new mongoose.Schema({
+const BlindBox = sequelize.define('BlindBox', {
+  id: {
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
+    primaryKey: true
+  },
   name: {
-    type: String,
-    required: true
+    type: DataTypes.STRING(100),
+    allowNull: false,
+    validate: { notEmpty: true }
   },
   price: {
-    type: Number,
-    required: true
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false
   },
   type: {
-    type: String,
-    enum: ['lottery', 'infinite', 'hash'],
-    default: 'infinite'
+    type: DataTypes.ENUM('lottery', 'infinite', 'hash'),
+    defaultValue: 'infinite'
   },
   image: {
-    type: String
+    type: DataTypes.STRING(500),
+    allowNull: true
   },
   description: {
-    type: String
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  cover_image: {
+    type: DataTypes.STRING(500),
+    allowNull: true
   },
   status: {
-    type: String,
-    enum: ['active', 'inactive'],
-    default: 'active'
+    type: DataTypes.ENUM('active', 'inactive'),
+    defaultValue: 'active'
   },
-  saleTime: {
-    type: Date,
-    default: Date.now
+  sale_time: {
+    type: DataTypes.DATE,
+    allowNull: true
   },
-  prizes: [
-    {
-      id: {
-        type: Number
-      },
-      name: {
-        type: String,
-        required: true
-      },
-      image: {
-        type: String
-      },
-      rarity: {
-        type: String,
-        enum: ['common', 'rare', 'hidden'],
-        default: 'common'
-      },
-      probability: {
-        type: Number,
-        required: true
-      },
-      stock: {
-        type: Number,
-        default: 0
-      }
-    }
-  ],
+  stock: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0
+  },
   guarantee: {
-    type: Number,
-    default: 0
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    comment: '保底机制 - 抽多少次必出稀有'
   },
-  maxHidden: {
-    type: Number,
-    default: 0
+  max_hidden: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    comment: '防爆雷 - 最多出几个隐藏款'
   },
-  totalDraws: {
-    type: Number,
-    default: 0
+  total_draws: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0
   },
-  createdAt: {
-    type: Date,
-    default: Date.now
+  tag: {
+    type: DataTypes.STRING(20),
+    allowNull: true
   },
-  updatedAt: {
-    type: Date,
-    default: Date.now
+  tag_text: {
+    type: DataTypes.STRING(20),
+    allowNull: true
   }
+}, {
+  tableName: 'blind_boxes'
 });
-
-// 保存前更新updatedAt
-blindBoxSchema.pre('save', function(next) {
-  this.updatedAt = new Date();
-  next();
-});
-
-const BlindBox = mongoose.model('BlindBox', blindBoxSchema);
 
 module.exports = BlindBox;

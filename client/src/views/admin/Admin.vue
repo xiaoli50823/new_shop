@@ -1,328 +1,407 @@
 <template>
-  <div class="admin">
-    <!-- 左侧导航菜单 -->
-    <div class="sidebar">
-      <div class="logo">
-        <h1 class="logo-text">盲盒管理系统</h1>
-        <span class="logo-sub">BLIND BOX MANAGE</span>
+  <div class="admin-layout">
+    <!-- 左侧侧边栏 -->
+    <aside class="sidebar" :class="{ collapsed: isCollapsed }">
+      <div class="logo-area">
+        <div class="logo-icon">📦</div>
+        <div v-show="!isCollapsed" class="logo-text">
+          <div class="logo-title">盲盒管理系统</div>
+          <div class="logo-subtitle">BLIND BOX MANAGE</div>
+        </div>
       </div>
       <el-menu
         :default-active="activeMenu"
-        class="el-menu-vertical-demo"
+        :collapse="isCollapsed"
+        class="sidebar-menu"
+        background-color="transparent"
+        text-color="rgba(255,255,255,0.7)"
+        active-text-color="#ffffff"
         router
-        @select="handleMenuSelect"
       >
         <el-menu-item index="/admin/dashboard">
-          <span>数据大盘</span>
+          <el-icon><component :is="'TrendCharts'" /></el-icon>
+          <template #title>数据大盘</template>
         </el-menu-item>
         <el-menu-item index="/admin/blind-box">
-          <span>盲盒管理</span>
+          <el-icon><component :is="'Box'" /></el-icon>
+          <template #title>盲盒管理</template>
+        </el-menu-item>
+        <el-menu-item index="/admin/prizes">
+          <el-icon><component :is="'Present'" /></el-icon>
+          <template #title>奖品管理</template>
         </el-menu-item>
         <el-menu-item index="/admin/order">
-          <span>订单管理</span>
+          <el-icon><component :is="'List'" /></el-icon>
+          <template #title>订单管理</template>
         </el-menu-item>
         <el-menu-item index="/admin/user">
-          <span>用户管理</span>
+          <el-icon><component :is="'User'" /></el-icon>
+          <template #title>用户管理</template>
+        </el-menu-item>
+        <el-menu-item index="/admin/revenue">
+          <el-icon><component :is="'DataAnalysis'" /></el-icon>
+          <template #title>营收报表</template>
+        </el-menu-item>
+        <el-menu-item index="/admin/settings">
+          <el-icon><component :is="'Setting'" /></el-icon>
+          <template #title>系统设置</template>
         </el-menu-item>
       </el-menu>
-    </div>
+    </aside>
 
-    <!-- 右侧工作区 -->
-    <div class="main-content">
-      <!-- 顶部状态栏 -->
-      <div class="header">
-        <div class="header-left">
-          <el-button type="text" @click="toggleSidebar">
-            菜单
-          </el-button>
-          <span class="breadcrumb">{{ breadcrumb }}</span>
+    <!-- 右侧主区域 -->
+    <div class="main-wrapper" :class="{ expanded: isCollapsed }">
+      <!-- 顶部栏 -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <el-icon class="collapse-btn" @click="toggleSidebar">
+            <component :is="isCollapsed ? 'Expand' : 'Fold'" />
+          </el-icon>
+          <el-breadcrumb separator="/">
+            <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">首页</el-breadcrumb-item>
+            <el-breadcrumb-item>{{ currentBreadcrumb }}</el-breadcrumb-item>
+          </el-breadcrumb>
         </div>
-        <div class="header-right">
-          <el-dropdown>
-            <span class="user-info">
-              <span>{{ adminName }}</span>
-            </span>
+        <div class="topbar-right">
+          <el-dropdown trigger="click" @command="handleCommand">
+            <div class="admin-info">
+              <el-avatar :size="32" class="admin-avatar">管</el-avatar>
+              <span class="admin-name">{{ adminName }}</span>
+              <el-icon><ArrowDown /></el-icon>
+            </div>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item @click="goToPersonal">个人中心</el-dropdown-item>
-                <el-dropdown-item @click="changePassword">修改密码</el-dropdown-item>
-                <el-dropdown-item divided @click="logout">退出登录</el-dropdown-item>
+                <el-dropdown-item command="profile">
+                  <el-icon><User /></el-icon>个人中心
+                </el-dropdown-item>
+                <el-dropdown-item command="password">
+                  <el-icon><Lock /></el-icon>修改密码
+                </el-dropdown-item>
+                <el-dropdown-item divided command="logout">
+                  <el-icon><SwitchButton /></el-icon>退出登录
+                </el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
         </div>
-      </div>
+      </header>
 
-      <!-- 内容区域 -->
-      <div class="content">
-        <router-view />
-      </div>
+      <!-- 内容区 -->
+      <main class="content-area">
+        <router-view v-slot="{ Component }">
+          <transition name="fade" mode="out-in">
+            <component :is="Component" />
+          </transition>
+        </router-view>
+      </main>
     </div>
+
+    <!-- 修改密码弹窗 -->
+    <el-dialog v-model="showPasswordDialog" title="修改密码" width="450px" destroy-on-close>
+      <el-form ref="passwordFormRef" :model="passwordForm" :rules="passwordRules" label-width="100px">
+        <el-form-item label="原密码" prop="oldPassword">
+          <el-input v-model="passwordForm.oldPassword" type="password" show-password placeholder="请输入原密码" />
+        </el-form-item>
+        <el-form-item label="新密码" prop="newPassword">
+          <el-input v-model="passwordForm.newPassword" type="password" show-password placeholder="请输入新密码" />
+        </el-form-item>
+        <el-form-item label="确认密码" prop="confirmPassword">
+          <el-input v-model="passwordForm.confirmPassword" type="password" show-password placeholder="请再次输入新密码" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showPasswordDialog = false">取消</el-button>
+        <el-button type="primary" @click="submitPassword">确认修改</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
+import { ArrowDown, User, Lock, SwitchButton, Expand, Fold, TrendCharts, Box, Present, List, DataAnalysis, Setting } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
 
-// 侧边栏折叠状态
-const sidebarCollapsed = ref(false)
-
-// 管理员名称
+const isCollapsed = ref(false)
 const adminName = ref('管理员')
+const showPasswordDialog = ref(false)
+const passwordFormRef = ref<FormInstance>()
 
-// 当前激活的菜单
-const activeMenu = computed(() => {
-  return route.path
+const activeMenu = computed(() => route.path)
+
+const breadcrumbMap: Record<string, string> = {
+  '/admin/dashboard': '数据大盘',
+  '/admin/blind-box': '盲盒管理',
+  '/admin/prizes': '奖品管理',
+  '/admin/order': '订单管理',
+  '/admin/user': '用户管理',
+  '/admin/revenue': '营收报表',
+  '/admin/settings': '系统设置'
+}
+
+const currentBreadcrumb = computed(() => breadcrumbMap[route.path] || '数据大盘')
+
+const passwordForm = reactive({
+  oldPassword: '',
+  newPassword: '',
+  confirmPassword: ''
 })
 
-// 面包屑
-const breadcrumb = computed(() => {
-  const path = route.path
-  if (path === '/admin/dashboard') return '数据大盘'
-  if (path === '/admin/blind-box') return '盲盒管理'
-  if (path === '/admin/order') return '订单管理'
-  if (path === '/admin/user') return '用户管理'
-  return ''
-})
+const validateConfirm = (_rule: any, value: string, callback: any) => {
+  if (value !== passwordForm.newPassword) {
+    callback(new Error('两次输入的密码不一致'))
+  } else {
+    callback()
+  }
+}
 
-// 切换侧边栏
+const passwordRules: FormRules = {
+  oldPassword: [{ required: true, message: '请输入原密码', trigger: 'blur' }],
+  newPassword: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    { min: 6, message: '密码长度不少于6位', trigger: 'blur' }
+  ],
+  confirmPassword: [
+    { required: true, message: '请确认新密码', trigger: 'blur' },
+    { validator: validateConfirm, trigger: 'blur' }
+  ]
+}
+
 const toggleSidebar = () => {
-  sidebarCollapsed.value = !sidebarCollapsed.value
+  isCollapsed.value = !isCollapsed.value
 }
 
-// 菜单选择处理
-const handleMenuSelect = (key: string) => {
-  router.push(key)
+const handleCommand = (cmd: string) => {
+  switch (cmd) {
+    case 'profile':
+      router.push('/admin/user')
+      break
+    case 'password':
+      passwordForm.oldPassword = ''
+      passwordForm.newPassword = ''
+      passwordForm.confirmPassword = ''
+      showPasswordDialog.value = true
+      break
+    case 'logout':
+      ElMessageBox.confirm('确定要退出登录吗？', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        localStorage.removeItem('token')
+        localStorage.removeItem('adminInfo')
+        ElMessage.success('已退出登录')
+        router.push('/')
+      }).catch(() => {})
+      break
+  }
 }
 
-// 个人中心
-const goToPersonal = () => {
-  ElMessage.success('功能开发中')
-}
-
-// 修改密码
-const changePassword = () => {
-  ElMessage.success('功能开发中')
-}
-
-// 退出登录
-const logout = () => {
-  ElMessage.success('功能开发中')
+const submitPassword = async () => {
+  if (!passwordFormRef.value) return
+  await passwordFormRef.value.validate((valid) => {
+    if (valid) {
+      ElMessage.success('密码修改成功')
+      showPasswordDialog.value = false
+    }
+  })
 }
 </script>
 
 <style scoped>
-.admin {
+.admin-layout {
   display: flex;
   height: 100vh;
   overflow: hidden;
-  background: #F5F6F8;
 }
 
 /* 侧边栏 */
 .sidebar {
   width: 220px;
-  background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
-  color: white;
-  transition: width 0.3s;
+  min-width: 220px;
+  height: 100vh;
+  background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+  transition: width 0.3s ease, min-width 0.3s ease;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+  z-index: 100;
 }
 
 .sidebar.collapsed {
   width: 64px;
+  min-width: 64px;
 }
 
-.logo {
-  height: 100px;
+.logo-area {
+  height: 70px;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 0 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 10px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.logo-icon {
+  font-size: 28px;
+  flex-shrink: 0;
 }
 
 .logo-text {
-  font-size: 20px;
-  font-weight: 700;
-  margin: 0 0 8px 0;
-  background: linear-gradient(90deg, #00d2ff 0%, #3a7bd5 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  text-align: center;
+  overflow: hidden;
 }
 
-.logo-sub {
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.6);
+.logo-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.3;
+}
+
+.logo-subtitle {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.45);
   letter-spacing: 2px;
   text-transform: uppercase;
-  text-align: center;
 }
 
-.logo.collapsed .logo-text,
-.logo.collapsed .logo-sub {
-  display: none;
-}
-
-/* 菜单 */
-.el-menu-vertical-demo {
-  background: transparent;
-  border-right: none;
+.sidebar-menu {
   flex: 1;
+  border-right: none;
+  padding: 8px 0;
 }
 
-.el-menu-item {
-  color: rgba(255, 255, 255, 0.8);
-  height: 60px;
-  line-height: 60px;
-  margin: 8px 16px;
-  border-radius: 8px;
-  transition: all 0.3s;
-  background: rgba(255, 255, 255, 0.05);
-  padding-left: 24px !important;
+.sidebar-menu .el-menu-item {
+  height: 48px;
+  line-height: 48px;
+  margin: 2px 8px;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: all 0.25s ease;
 }
 
-.el-menu-item:hover {
-  background: rgba(0, 188, 212, 0.2) !important;
-  color: #00BCD4 !important;
+.sidebar-menu .el-menu-item:hover {
+  background: rgba(24, 144, 255, 0.15) !important;
+  color: #ffffff !important;
 }
 
-.el-menu-item.is-active {
-  background: linear-gradient(90deg, #00d2ff 0%, #3a7bd5 100%) !important;
-  color: white !important;
-  box-shadow: 0 4px 12px rgba(0, 188, 212, 0.4);
+.sidebar-menu .el-menu-item.is-active {
+  background: #1890FF !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.35);
 }
 
-.el-menu-item .el-icon {
+.sidebar-menu .el-menu-item .el-icon {
   font-size: 18px;
-  margin-right: 12px;
+  margin-right: 8px;
 }
 
-/* 右侧工作区 */
-.main-content {
+/* 主区域 */
+.main-wrapper {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #F5F6F8;
+  transition: all 0.3s ease;
 }
 
-/* 顶部状态栏 */
-.header {
+/* 顶部栏 */
+.topbar {
   height: 60px;
-  background: white;
+  min-height: 60px;
+  background: #ffffff;
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
-  padding: 0 30px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  z-index: 100;
+  padding: 0 24px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  z-index: 99;
 }
 
-.header-left {
+.topbar-left {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
 }
 
-.breadcrumb {
-  font-size: 16px;
-  font-weight: 600;
-  color: #333333;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.collapse-btn {
+  font-size: 20px;
   cursor: pointer;
-  padding: 8px 16px;
-  border-radius: 8px;
-  transition: all 0.3s;
+  color: #606266;
+  transition: color 0.2s;
 }
 
-.user-info:hover {
-  background: #f0f9ff;
+.collapse-btn:hover {
+  color: #1890FF;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+}
+
+.admin-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 4px 12px;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.admin-info:hover {
+  background: #f5f7fa;
 }
 
 .admin-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: #00BCD4;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
+  background: #1890FF;
+  color: #fff;
+  font-size: 13px;
   font-weight: 600;
 }
 
-/* 内容区域 */
-.content {
+.admin-name {
+  font-size: 14px;
+  color: #303133;
+}
+
+/* 内容区 */
+.content-area {
   flex: 1;
-  padding: 30px;
+  padding: 24px;
   overflow-y: auto;
+  background: #F0F2F5;
 }
 
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .sidebar {
-    position: fixed;
-    left: 0;
-    top: 0;
-    height: 100vh;
-    z-index: 1000;
-  }
-  
-  .sidebar.collapsed {
-    transform: translateX(-100%);
-  }
-  
-  .main-content {
-    margin-left: 0;
-  }
-  
-  .content {
-    padding: 20px;
-  }
-  
-  .header {
-    padding: 0 20px;
-  }
+.content-area::-webkit-scrollbar {
+  width: 6px;
 }
 
-/* 滚动条样式 */
-.content::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+.content-area::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
 }
 
-.content::-webkit-scrollbar-track {
-  background: #F8F9FA;
-  border-radius: 4px;
+.content-area::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-.content::-webkit-scrollbar-thumb {
-  background: linear-gradient(90deg, #00d2ff 0%, #3a7bd5 100%);
-  border-radius: 4px;
-  opacity: 0.6;
+/* 路由切换动画 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
 }
 
-.content::-webkit-scrollbar-thumb:hover {
-  opacity: 1;
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>

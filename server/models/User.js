@@ -1,112 +1,104 @@
-const mongoose = require('mongoose');
+/**
+ * 用户模型 - Sequelize
+ */
+const { DataTypes } = require('sequelize');
 const bcrypt = require('bcryptjs');
+const sequelize = require('../config/database');
 
-const userSchema = new mongoose.Schema({
+const User = sequelize.define('User', {
+  id: {
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
+    primaryKey: true
+  },
   username: {
-    type: String,
-    required: true
+    type: DataTypes.STRING(50),
+    unique: true,
+    allowNull: false,
+    validate: { notEmpty: true }
   },
   email: {
-    type: String,
-    required: true,
-    unique: true
+    type: DataTypes.STRING(100),
+    unique: true,
+    allowNull: false,
+    validate: { isEmail: true }
   },
   password: {
-    type: String,
-    required: true
+    type: DataTypes.STRING(255),
+    allowNull: false,
+    validate: { notEmpty: true }
   },
   phone: {
-    type: String
+    type: DataTypes.STRING(20),
+    allowNull: true
   },
   avatar: {
-    type: String
+    type: DataTypes.STRING(500),
+    allowNull: true
   },
-  vipLevel: {
-    type: Number,
-    default: 1
+  vip_level: {
+    type: DataTypes.INTEGER,
+    defaultValue: 1
   },
   points: {
-    type: Number,
-    default: 0
+    type: DataTypes.INTEGER,
+    defaultValue: 0
   },
-  blindBoxCoin: {
-    type: Number,
-    default: 0
+  blind_box_coin: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0
   },
-  coupons: [
-    {
-      id: {
-        type: Number
-      },
-      type: {
-        type: String
-      },
-      value: {
-        type: Number
-      },
-      expireAt: {
-        type: Date
-      }
-    }
-  ],
-  tools: {
-    perspectiveCard: {
-      type: Number,
-      default: 0
-    },
-    hintCard: {
-      type: Number,
-      default: 0
-    }
+  check_in_days: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0
   },
-  checkInDays: {
-    type: Number,
-    default: 0
-  },
-  lastCheckIn: {
-    type: Date
+  last_check_in: {
+    type: DataTypes.DATEONLY,
+    allowNull: true
   },
   role: {
-    type: String,
-    enum: ['user', 'admin'],
-    default: 'user'
+    type: DataTypes.ENUM('user', 'admin'),
+    defaultValue: 'user'
   },
   status: {
-    type: String,
-    enum: ['active', 'banned'],
-    default: 'active'
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
+    type: DataTypes.ENUM('active', 'banned'),
+    defaultValue: 'active'
+  }
+}, {
+  tableName: 'users',
+  // 密码加密钩子
+  hooks: {
+    beforeCreate: async (user) => {
+      if (user.password) {
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(user.password, salt);
+      }
+    },
+    beforeUpdate: async (user) => {
+      if (user.changed('password')) {
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(user.password, salt);
+      }
+    }
   }
 });
 
-// 密码加密
-userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) {
-    return next();
-  }
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
-  next();
-});
-
-// 验证密码
-userSchema.methods.comparePassword = async function(password) {
-  return await bcrypt.compare(password, this.password);
+/**
+ * 验证密码
+ * @param {string} password - 明文密码
+ * @returns {boolean}
+ */
+User.prototype.comparePassword = async function (password) {
+  return bcrypt.compare(password, this.password);
 };
 
-// 保存前更新updatedAt
-userSchema.pre('save', function(next) {
-  this.updatedAt = new Date();
-  next();
-});
-
-const User = mongoose.model('User', userSchema);
+/**
+ * 序列化时隐藏密码
+ */
+User.prototype.toJSON = function () {
+  const values = { ...this.get() };
+  delete values.password;
+  return values;
+};
 
 module.exports = User;

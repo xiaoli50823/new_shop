@@ -1,156 +1,199 @@
-# 盲盒商城信息管理系统
+# 盲盒星球 - 盲盒商城信息管理系统
 
 ## 系统架构
 
-### 三大部分组成
-1. **用户端（C端）**：Vue 3 + TypeScript 开发的前端应用，包括微信小程序/H5/App
-2. **管理端（B端）**：Web后台管理系统，基于Element Plus构建
-3. **服务端（底层）**：Node.js + Express + MongoDB + Redis
-
 ### 技术栈
-- **前端**：Vue 3, TypeScript, Element Plus, Vue Router, Pinia
-- **后端**：Node.js, Express, MongoDB, Redis
-- **工具**：Vite, Nodemon
+- **前端（客户端 C端）**：Vue 3 + TypeScript + Element Plus + Pinia + Vue Router
+- **前端（管理端 B端）**：Vue 3 + TypeScript + Element Plus + Vue Router
+- **后端**：Node.js + Express + MySQL + Sequelize ORM
+- **认证**：JWT (JSON Web Token)
+- **密码加密**：bcryptjs
 
-## 系统功能
-
-### 用户端（C端）
-1. **首页模块**：轮播海报、盲盒专区（一番赏/无限盲盒/哈希盲盒）、动态播报、推荐商品瀑布流
-2. **抽盒/详情页面**：商品信息、奖池展示、抽盒机制（单抽/五连抽/十连抽）、透视卡/提示卡
-3. **盒柜/背包模块**：已抽中商品展示、发货与回收机制
-4. **个人中心**：订单管理、资产管理、会员成长体系
-
-### 管理端（B端）
-1. **数据大盘**：核心指标、转化漏斗、奖池监控
-2. **盲盒与商品管理**：商品库管理、盲盒创建与配置、奖池配置、保底机制、防爆雷风控
-3. **订单与发货管理**：抽盒订单记录、发货单管理、回收站记录
-4. **用户与CRM管理**：用户列表、用户标签与分群、黑名单风控
-5. **营销与活动管理**：优惠券配置、道具管理、分销与裂变
-6. **财务与对账**：营收报表、成本利润核算
-7. **系统与权限设置**：权限管理、操作日志、支付与短信配置
-
-### 服务端
-1. **抽盒算法**：支持真随机和伪随机两种模式
-2. **高并发处理**：Redis缓存、请求限流
-3. **防刷风控**：基于IP和用户ID的限流机制
-
-## 项目结构
-
+### 项目结构
 ```
 new_shop/
-├── client/                # 前端项目
+├── client/                    # 前端项目（C端 + B端）
 │   ├── src/
-│   │   ├── components/    # 组件
-│   │   ├── views/         # 页面
-│   │   │   ├── admin/     # 管理端页面
-│   │   ├── utils/         # 工具函数
-│   │   ├── api/           # API请求
-│   │   ├── main.ts        # 入口文件
-│   │   ├── router.ts      # 路由配置
-│   │   └── App.vue        # 根组件
+│   │   ├── components/        # 可复用组件
+│   │   │   ├── BlindBoxCard.vue
+│   │   │   └── BottomTabBar.vue
+│   │   ├── views/             # C端页面
+│   │   │   ├── Home.vue       # 首页
+│   │   │   ├── Discover.vue   # 发现页
+│   │   │   ├── BlindBoxDetail.vue  # 盲盒详情
+│   │   │   ├── BoxCabinet.vue # 盒柜
+│   │   │   ├── Personal.vue   # 个人中心
+│   │   │   ├── Search.vue     # 搜索
+│   │   │   ├── OrderDetail.vue # 订单详情
+│   │   │   ├── Address.vue    # 收货地址
+│   │   │   ├── Recharge.vue   # 充值
+│   │   │   ├── auth/
+│   │   │   │   ├── Login.vue  # 登录
+│   │   │   │   └── Register.vue # 注册
+│   │   │   └── admin/         # B端页面
+│   │   │       ├── Admin.vue  # 管理端布局
+│   │   │       ├── Dashboard.vue # 数据大盘
+│   │   │       ├── BlindBoxManage.vue # 盲盒管理
+│   │   │       ├── PrizeManage.vue # 奖品管理
+│   │   │       ├── OrderManage.vue # 订单管理
+│   │   │       ├── UserManage.vue # 用户管理
+│   │   │       ├── RevenueReport.vue # 营收报表
+│   │   │       └── SystemSettings.vue # 系统设置
+│   │   ├── services/api.ts    # API 请求封装
+│   │   ├── stores/user.ts     # Pinia 用户状态
+│   │   ├── utils/format.ts    # 工具函数
+│   │   ├── router.ts          # 路由配置
+│   │   ├── App.vue            # 根组件
+│   │   └── main.ts            # 入口文件
 │   ├── index.html
 │   ├── package.json
 │   ├── tsconfig.json
 │   └── vite.config.ts
-├── server/                # 后端项目
-│   ├── models/            # 数据模型
-│   ├── routes/            # 路由
-│   ├── controllers/       # 控制器
-│   ├── middleware/        # 中间件
-│   ├── utils/             # 工具函数
-│   ├── index.js           # 入口文件
+├── server/                    # 后端项目
+│   ├── config/database.js     # Sequelize 连接配置
+│   ├── models/                # Sequelize 数据模型
+│   │   ├── index.js           # 关联关系注册
+│   │   ├── User.js            # 用户
+│   │   ├── BlindBox.js        # 盲盒
+│   │   ├── Prize.js           # 奖品
+│   │   ├── Order.js           # 订单
+│   │   ├── OrderItem.js       # 订单项
+│   │   ├── UserCabinet.js     # 用户盒柜
+│   │   ├── Coupon.js          # 优惠券
+│   │   └── DrawRecord.js      # 抽盒记录
+│   ├── routes/                # API 路由
+│   │   ├── auth.js            # 认证（注册/登录）
+│   │   ├── users.js           # 用户管理
+│   │   ├── blindBoxes.js      # 盲盒管理 + 抽盒
+│   │   ├── orders.js          # 订单管理
+│   │   ├── products.js        # 普通商品
+│   │   ├── dashboard.js       # 管理端数据大盘
+│   │   ├── prizes.js          # 奖品管理
+│   │   ├── revenue.js         # 营收报表
+│   │   └── settings.js        # 系统设置
+│   ├── middleware/            # 中间件
+│   │   ├── auth.js            # JWT 认证中间件
+│   │   ├── validate.js        # 参数校验
+│   │   ├── logger.js          # 请求日志
+│   │   └── antiBrush.js       # 防刷限流
+│   ├── utils/
+│   │   └── drawAlgorithm.js   # 抽盒算法（真随机/伪随机）
+│   ├── seeders/
+│   │   ├── seed.js            # 数据初始化
+│   │   └── drop.js            # 清空数据
+│   ├── index.js               # 入口文件
+│   ├── .env                   # 环境变量
 │   └── package.json
-└── README.md              # 项目文档
+└── README.md
 ```
 
-## 安装与运行
+## 快速开始
 
-### 前端
-1. 进入前端目录
-   ```bash
-   cd client
-   ```
-2. 安装依赖
-   ```bash
-   npm install
-   ```
-3. 启动开发服务器
-   ```bash
-   npm run dev
-   ```
-4. 构建生产版本
-   ```bash
-   npm run build
-   ```
+### 1. 环境要求
+- Node.js >= 18
+- MySQL >= 5.7
 
-### 后端
-1. 进入后端目录
-   ```bash
-   cd server
-   ```
-2. 安装依赖
-   ```bash
-   npm install
-   ```
-3. 启动开发服务器
-   ```bash
-   npm run dev
-   ```
-4. 启动生产服务器
-   ```bash
-   npm start
-   ```
+### 2. 数据库准备
+```sql
+CREATE DATABASE blind_box_mall DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
 
-## 环境配置
+### 3. 配置环境变量
+编辑 `server/.env`：
+```
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=blind_box_mall
+DB_USER=root
+DB_PASS=your_password
+JWT_SECRET=your_secret_key
+PORT=8080
+```
 
-### MongoDB
-- 默认连接地址：`mongodb://localhost:27017/blind-box`
+### 4. 安装依赖
+```bash
+# 后端
+cd server && npm install
 
-### Redis
-- 默认连接地址：`redis://localhost:6379`
-- 注意：Redis为可选依赖，当Redis不可用时，系统会自动使用内存存储作为fallback
+# 前端
+cd client && npm install
+```
 
-## 核心功能说明
+### 5. 初始化数据
+```bash
+cd server && node seeders/seed.js
+```
+
+### 6. 启动项目
+```bash
+# 后端（端口 8080）
+cd server && npm run dev
+
+# 前端（端口 3000）
+cd client && npm run dev
+```
+
+### 7. 测试账号
+- 管理员：`admin@blindbox.com` / `admin123`
+- 普通用户：`user@blindbox.com` / `user123`
+
+## 功能清单
+
+### 客户端（C端）
+- [x] 首页（轮播、分类导航、商品瀑布流、中奖播报）
+- [x] 发现页（分类标签、筛选排序、瀑布流）
+- [x] 盲盒详情（奖池展示、单抽/五连/十连、开盒动画）
+- [x] 盒柜（待发货/已发货/已回收、批量操作、发货/回收）
+- [x] 个人中心（资产、订单、签到、VIP、邀请好友、设置）
+- [x] 登录/注册
+- [x] 搜索（历史、热门、结果）
+- [x] 订单详情
+- [x] 收货地址管理
+- [x] 充值
+
+### 管理端（B端）
+- [x] 数据大盘（核心指标、转化漏斗、销售趋势、奖池监控）
+- [x] 盲盒管理（CRUD、奖池配置、上下架）
+- [x] 奖品管理（CRUD、关联盲盒）
+- [x] 订单管理（筛选、详情、发货、取消）
+- [x] 用户管理（筛选、封禁/解封、批量操作、详情）
+- [x] 营收报表（趋势图、明细表）
+- [x] 系统设置（基本/支付/短信/操作日志）
+
+### 后端 API
+- [x] 认证（注册/登录/JWT）
+- [x] 用户管理（CRUD/签到/回收/盒柜/订单/优惠券）
+- [x] 盲盒管理（CRUD/抽盒算法/事务锁）
+- [x] 订单管理（CRUD/发货/状态机校验）
+- [x] 数据大盘（GMV/趋势/漏斗/奖池监控/最近订单/活跃用户）
+- [x] 奖品管理（CRUD）
+- [x] 营收报表
+- [x] 系统设置
+- [x] 防刷限流中间件
+- [x] JWT 认证中间件
+- [x] 参数校验中间件
+
+## 核心设计
 
 ### 抽盒算法
-- **真随机**：每次点击都按概率计算，不保证大盘整体利润
-- **伪随机**：预先生成好奖池序列，保证平台绝对毛利可控
+- **真随机**：每次独立按概率抽取
+- **伪随机**：库存控制，有库存才能抽中
+- **保底机制**：五连抽必得稀有款
+- **并发安全**：使用数据库事务 + 行锁 (`SELECT ... FOR UPDATE`)
 
-### 防刷机制
-- **全局防刷**：限制单个IP的请求频率
-- **抽盒防刷**：限制单个用户的抽盒频率
-- **抢购防刷**：限制抢购场景下的请求频率
+### 订单状态机
+```
+pending → paid → shipping → completed
+   ↓
+cancelled
+```
 
-### 高并发处理
-- **Redis缓存**：缓存热点数据，减少数据库压力
-- **请求限流**：防止恶意请求导致系统崩溃
-- **代码优化**：前端代码分割，后端异步处理
-
-## 安全措施
-- **密码加密**：使用bcryptjs对用户密码进行加密存储
-- **JWT认证**：使用JSON Web Token进行用户认证
-- **输入验证**：对所有用户输入进行验证，防止XSS和SQL注入
-- **权限控制**：基于角色的权限管理（RBAC）
-
-## 开发指南
-
-### 前端开发
-1. 新增页面：在`client/src/views`目录下创建新的Vue组件
-2. 新增路由：在`client/src/router.ts`中添加路由配置
-3. 新增API请求：在`client/src/api`目录下创建API请求文件
-
-### 后端开发
-1. 新增模型：在`server/models`目录下创建新的数据模型
-2. 新增路由：在`server/routes`目录下创建新的路由文件
-3. 新增中间件：在`server/middleware`目录下创建新的中间件
-4. 新增工具函数：在`server/utils`目录下创建新的工具函数
-
-## 注意事项
-1. 本系统使用了模拟数据，实际部署时需要替换为真实数据
-2. 生产环境中需要配置环境变量，如数据库连接字符串、JWT密钥等
-3. 为了保证系统稳定性，建议在生产环境中部署Redis
-4. 定期备份MongoDB数据，防止数据丢失
+### 安全措施
+- 密码 bcrypt 加密存储
+- JWT Token 认证
+- 请求限流防刷
+- 角色权限控制（user/admin）
+- 参数校验
 
 ## 许可证
-
 MIT License

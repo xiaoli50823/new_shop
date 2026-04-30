@@ -20,7 +20,6 @@ export default defineConfig({
     }
   },
   build: {
-    // 代码分割
     rollupOptions: {
       output: {
         manualChunks: {
@@ -28,14 +27,6 @@ export default defineConfig({
           'element-plus': ['element-plus'],
           'axios': ['axios']
         }
-      }
-    },
-    // 压缩
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true,
-        drop_debugger: true
       }
     }
   },

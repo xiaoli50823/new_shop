@@ -1,392 +1,417 @@
 <template>
   <div class="order-manage">
-    <!-- 操作按钮 -->
-    <div class="actions">
-      <el-button type="primary" @click="exportOrders">导出订单</el-button>
-      <el-button type="success" @click="refreshOrders">刷新</el-button>
+    <!-- 筛选栏 -->
+    <div class="card filter-bar">
+      <div class="filter-row">
+        <el-input
+          v-model="searchKeyword"
+          placeholder="搜索订单号/用户名"
+          clearable
+          style="width: 240px"
+          @keyup.enter="handleSearch"
+        >
+          <template #prefix><el-icon><Search /></el-icon></template>
+        </el-input>
+        <el-select v-model="filterType" placeholder="订单类型" clearable style="width: 140px">
+          <el-option label="全部" value="" />
+          <el-option label="购买" value="purchase" />
+          <el-option label="发货" value="shipment" />
+          <el-option label="抽盒" value="draw" />
+        </el-select>
+        <el-select v-model="filterStatus" placeholder="订单状态" clearable style="width: 140px">
+          <el-option label="全部" value="" />
+          <el-option label="待支付" value="pending" />
+          <el-option label="已支付" value="paid" />
+          <el-option label="配送中" value="shipping" />
+          <el-option label="已完成" value="completed" />
+          <el-option label="已取消" value="cancelled" />
+        </el-select>
+        <el-date-picker
+          v-model="dateRange"
+          type="daterange"
+          range-separator="至"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
+          style="width: 260px"
+        />
+        <el-button @click="resetFilter">重置</el-button>
+        <div class="filter-right">
+          <el-button @click="exportOrders">
+            <el-icon><Download /></el-icon>导出
+          </el-button>
+        </div>
+      </div>
     </div>
 
-    <!-- 搜索和筛选 -->
-    <div class="search-filter">
-      <el-input
-        v-model="searchKeyword"
-        placeholder="搜索订单号/用户ID"
-        style="width: 300px; margin-right: 10px"
-        clearable
+    <!-- 表格 -->
+    <div class="card">
+      <el-table
+        :data="orderList"
+        stripe
+        border
+        v-loading="loading"
+        style="width: 100%"
       >
-        <template #append>
-          <el-button @click="searchOrders"><el-icon><Search /></el-icon></el-button>
-        </template>
-      </el-input>
-      <el-select v-model="orderType" placeholder="订单类型" style="width: 150px; margin-right: 10px">
-        <el-option label="全部" value=""></el-option>
-        <el-option label="购买订单" value="purchase"></el-option>
-        <el-option label="发货订单" value="shipment"></el-option>
-      </el-select>
-      <el-select v-model="orderStatus" placeholder="订单状态" style="width: 150px">
-        <el-option label="全部" value=""></el-option>
-        <el-option label="待支付" value="pending"></el-option>
-        <el-option label="已支付" value="paid"></el-option>
-        <el-option label="配送中" value="shipping"></el-option>
-        <el-option label="已完成" value="completed"></el-option>
-        <el-option label="已取消" value="cancelled"></el-option>
-      </el-select>
-    </div>
-
-    <!-- 订单列表 -->
-    <div class="order-list">
-      <el-table :data="orders" style="width: 100%">
-        <el-table-column prop="id" label="订单号" width="180"></el-table-column>
-        <el-table-column prop="userId" label="用户ID" width="150"></el-table-column>
-        <el-table-column prop="type" label="类型" width="100">
-          <template #default="scope">
-            <el-tag :type="scope.row.type === 'purchase' ? 'primary' : 'success'">
-              {{ scope.row.type === 'purchase' ? '购买' : '发货' }}
+        <el-table-column prop="orderNo" label="订单号" min-width="170" show-overflow-tooltip />
+        <el-table-column prop="username" label="用户" width="110" />
+        <el-table-column label="类型" width="90">
+          <template #default="{ row }">
+            <el-tag :type="typeMap[row.type]?.type || 'info'" size="small">
+              {{ typeMap[row.type]?.label || row.type }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="120">
-          <template #default="scope">
-            <el-tag :type="getStatusType(scope.row.status)">
-              {{ getStatusText(scope.row.status) }}
+        <el-table-column label="状态" width="100">
+          <template #default="{ row }">
+            <el-tag :type="statusMap[row.status]?.type || 'info'" size="small">
+              {{ statusMap[row.status]?.label || row.status }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="total" label="金额" width="100">
-          <template #default="scope">¥{{ scope.row.total }}</template>
-        </el-table-column>
-        <el-table-column prop="items" label="商品" width="300">
-          <template #default="scope">
-            <div v-for="(item, index) in scope.row.items" :key="index" class="order-item">
-              {{ item.name }} x {{ item.quantity }}
-            </div>
+        <el-table-column label="金额" width="100">
+          <template #default="{ row }">
+            <span class="price-text">¥{{ row.amount }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="创建时间" width="180"></el-table-column>
-        <el-table-column label="操作" width="280">
-          <template #default="scope">
-            <div class="action-buttons">
-              <el-button type="primary" size="small" @click="viewOrder(scope.row)">查看</el-button>
-              <el-button v-if="scope.row.status === 'pending'" type="success" size="small" @click="updateStatus(scope.row, 'paid')">标记支付</el-button>
-              <el-button v-if="scope.row.status === 'paid' && scope.row.type === 'shipment'" type="success" size="small" @click="showShipDialog(scope.row)">发货</el-button>
-              <el-button v-if="scope.row.status !== 'cancelled'" type="danger" size="small" @click="updateStatus(scope.row, 'cancelled')">取消</el-button>
-            </div>
+        <el-table-column prop="summary" label="商品摘要" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="createdAt" label="创建时间" width="170" />
+        <el-table-column label="操作" width="220" fixed="right">
+          <template #default="{ row }">
+            <el-button type="primary" link size="small" @click="viewDetail(row)">查看</el-button>
+            <el-button v-if="row.status === 'pending'" type="success" link size="small" @click="markPaid(row)">标记支付</el-button>
+            <el-button v-if="row.status === 'paid'" type="warning" link size="small" @click="openShipDialog(row)">发货</el-button>
+            <el-popconfirm v-if="row.status !== 'cancelled' && row.status !== 'completed'" title="确定取消该订单吗？" @confirm="cancelOrder(row)">
+              <template #reference>
+                <el-button type="danger" link size="small">取消</el-button>
+              </template>
+            </el-popconfirm>
           </template>
         </el-table-column>
       </el-table>
+      <div class="table-footer">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :total="totalCount"
+          :page-sizes="[10, 20, 50]"
+          layout="total, sizes, prev, pager, next"
+          @size-change="loadList"
+          @current-change="loadList"
+        />
+      </div>
     </div>
 
-    <!-- 发货弹窗 -->
-    <el-dialog
-      v-model="showShipDialogVisible"
-      title="发货"
-      width="500px"
-    >
-      <el-form :model="shipForm" label-width="100px">
-        <el-form-item label="订单号">
-          <el-input v-model="shipForm.orderId" disabled></el-input>
-        </el-form-item>
-        <el-form-item label="物流单号">
-          <el-input v-model="shipForm.trackingNumber" placeholder="请输入物流单号"></el-input>
-        </el-form-item>
-        <el-form-item label="快递公司">
-          <el-select v-model="shipForm.expressCompany" placeholder="选择快递公司">
-            <el-option label="顺丰速运" value="SF"></el-option>
-            <el-option label="中通快递" value="ZT"></el-option>
-            <el-option label="申通快递" value="ST"></el-option>
-            <el-option label="韵达快递" value="YD"></el-option>
-            <el-option label="圆通快递" value="YT"></el-option>
-          </el-select>
-        </el-form-item>
-      </el-form>
+    <!-- 订单详情弹窗 -->
+    <el-dialog v-model="detailVisible" title="订单详情" width="750px" destroy-on-close>
+      <div class="detail-section">
+        <h4>订单信息</h4>
+        <el-descriptions :column="2" border size="small">
+          <el-descriptions-item label="订单号">{{ detailData.orderNo }}</el-descriptions-item>
+          <el-descriptions-item label="用户">{{ detailData.username }}</el-descriptions-item>
+          <el-descriptions-item label="类型">
+            <el-tag :type="typeMap[detailData.type]?.type || 'info'" size="small">
+              {{ typeMap[detailData.type]?.label || detailData.type }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="状态">
+            <el-tag :type="statusMap[detailData.status]?.type || 'info'" size="small">
+              {{ statusMap[detailData.status]?.label || detailData.status }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="金额">¥{{ detailData.amount }}</el-descriptions-item>
+          <el-descriptions-item label="创建时间">{{ detailData.createdAt }}</el-descriptions-item>
+        </el-descriptions>
+      </div>
+
+      <div class="detail-section">
+        <h4>商品列表</h4>
+        <el-table :data="detailData.items || []" border size="small" style="width: 100%">
+          <el-table-column prop="name" label="商品名称" />
+          <el-table-column prop="quantity" label="数量" width="80" />
+          <el-table-column label="单价" width="100">
+            <template #default="{ row }">¥{{ row.price }}</template>
+          </el-table-column>
+          <el-table-column label="小计" width="100">
+            <template #default="{ row }">¥{{ (row.price * row.quantity).toFixed(2) }}</template>
+          </el-table-column>
+        </el-table>
+      </div>
+
+      <div v-if="detailData.shippingInfo" class="detail-section">
+        <h4>收货信息</h4>
+        <el-descriptions :column="1" border size="small">
+          <el-descriptions-item label="收货地址">{{ detailData.shippingInfo.address }}</el-descriptions-item>
+          <el-descriptions-item label="联系人">{{ detailData.shippingInfo.contact }}</el-descriptions-item>
+          <el-descriptions-item label="联系电话">{{ detailData.shippingInfo.phone }}</el-descriptions-item>
+        </el-descriptions>
+      </div>
+
+      <div v-if="detailData.trackingNo" class="detail-section">
+        <h4>物流信息</h4>
+        <el-descriptions :column="2" border size="small">
+          <el-descriptions-item label="快递公司">{{ detailData.expressCompany }}</el-descriptions-item>
+          <el-descriptions-item label="物流单号">{{ detailData.trackingNo }}</el-descriptions-item>
+        </el-descriptions>
+      </div>
+
+      <div v-if="detailData.logs && detailData.logs.length" class="detail-section">
+        <h4>操作日志</h4>
+        <el-timeline>
+          <el-timeline-item
+            v-for="(log, idx) in detailData.logs"
+            :key="idx"
+            :timestamp="log.time"
+            placement="top"
+          >
+            {{ log.action }} - {{ log.operator }}
+          </el-timeline-item>
+        </el-timeline>
+      </div>
+
       <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="showShipDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="confirmShip">确认发货</el-button>
-        </span>
+        <el-button @click="detailVisible = false">关闭</el-button>
       </template>
     </el-dialog>
 
-    <!-- 订单详情弹窗 -->
-    <el-dialog
-      v-model="showOrderDetail"
-      title="订单详情"
-      width="800px"
-    >
-      <div class="order-detail">
-        <div class="detail-section">
-          <h3>订单信息</h3>
-          <el-descriptions :column="2">
-            <el-descriptions-item label="订单号">{{ currentOrder.id }}</el-descriptions-item>
-            <el-descriptions-item label="用户ID">{{ currentOrder.userId }}</el-descriptions-item>
-            <el-descriptions-item label="订单类型">{{ currentOrder.type === 'purchase' ? '购买订单' : '发货订单' }}</el-descriptions-item>
-            <el-descriptions-item label="订单状态">{{ getStatusText(currentOrder.status) }}</el-descriptions-item>
-            <el-descriptions-item label="订单金额">¥{{ currentOrder.total }}</el-descriptions-item>
-            <el-descriptions-item label="创建时间">{{ currentOrder.createdAt }}</el-descriptions-item>
-          </el-descriptions>
-        </div>
-        <div class="detail-section">
-          <h3>商品信息</h3>
-          <el-table :data="currentOrder.items" style="width: 100%">
-            <el-table-column prop="name" label="商品名称"></el-table-column>
-            <el-table-column prop="quantity" label="数量"></el-table-column>
-            <el-table-column prop="price" label="单价">
-              <template #default="scope">¥{{ scope.row.price }}</template>
-            </el-table-column>
-            <el-table-column label="小计">
-              <template #default="scope">¥{{ scope.row.price * scope.row.quantity }}</template>
-            </el-table-column>
-          </el-table>
-        </div>
-        <div v-if="currentOrder.shippingInfo" class="detail-section">
-          <h3>收货信息</h3>
-          <el-descriptions :column="1">
-            <el-descriptions-item label="收货地址">{{ currentOrder.shippingInfo.address }}</el-descriptions-item>
-            <el-descriptions-item label="联系人">{{ currentOrder.shippingInfo.contact }}</el-descriptions-item>
-            <el-descriptions-item label="联系电话">{{ currentOrder.shippingInfo.phone }}</el-descriptions-item>
-            <el-descriptions-item label="物流单号">{{ currentOrder.shippingInfo.trackingNumber }}</el-descriptions-item>
-          </el-descriptions>
-        </div>
-      </div>
+    <!-- 发货弹窗 -->
+    <el-dialog v-model="shipVisible" title="发货" width="480px" destroy-on-close>
+      <el-form ref="shipFormRef" :model="shipForm" :rules="shipRules" label-width="100px">
+        <el-form-item label="订单号">
+          <el-input :model-value="shipForm.orderNo" disabled />
+        </el-form-item>
+        <el-form-item label="快递公司" prop="expressCompany">
+          <el-select v-model="shipForm.expressCompany" placeholder="请选择快递公司" style="width: 100%">
+            <el-option label="顺丰速运" value="顺丰速运" />
+            <el-option label="中通快递" value="中通快递" />
+            <el-option label="圆通速递" value="圆通速递" />
+            <el-option label="韵达快递" value="韵达快递" />
+            <el-option label="申通快递" value="申通快递" />
+            <el-option label="邮政快递" value="邮政快递" />
+            <el-option label="京东物流" value="京东物流" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="物流单号" prop="trackingNo">
+          <el-input v-model="shipForm.trackingNo" placeholder="请输入物流单号" />
+        </el-form-item>
+      </el-form>
       <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="showOrderDetail = false">关闭</el-button>
-        </span>
+        <el-button @click="shipVisible = false">取消</el-button>
+        <el-button type="primary" :loading="shipSubmitting" @click="confirmShip">确认发货</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
-import { ElMessage } from 'element-plus'
-import { Search } from '@element-plus/icons-vue'
+import { ref, reactive, onMounted } from 'vue'
+import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { Search, Download } from '@element-plus/icons-vue'
+import api from '../../services/api'
 
-// 订单数据
-const orders = ref([
-  {
-    id: '20260417001',
-    userId: '123456789',
-    type: 'purchase',
-    status: 'pending',
-    total: 250,
-    items: [
-      {
-        name: '海贼王一番赏',
-        quantity: 5,
-        price: 50
-      }
-    ],
-    createdAt: '2026-04-17 10:30:00'
-  },
-  {
-    id: '20260416001',
-    userId: '987654321',
-    type: 'shipment',
-    status: 'shipping',
-    total: 100,
-    items: [
-      {
-        name: '潮玩盲盒',
-        quantity: 2,
-        price: 39
-      },
-      {
-        name: '美妆盲盒',
-        quantity: 1,
-        price: 69
-      }
-    ],
-    shippingInfo: {
-      address: '北京市朝阳区某某街道123号',
-      contact: '张三',
-      phone: '13800138000',
-      trackingNumber: 'SF1234567890'
-    },
-    createdAt: '2026-04-16 14:20:00'
-  },
-  {
-    id: '20260415001',
-    userId: '123456789',
-    type: 'purchase',
-    status: 'completed',
-    total: 199,
-    items: [
-      {
-        name: '区块链盲盒',
-        quantity: 1,
-        price: 199
-      }
-    ],
-    createdAt: '2026-04-15 09:15:00'
-  }
-])
-
-// 搜索和筛选
+const loading = ref(false)
+const shipSubmitting = ref(false)
 const searchKeyword = ref('')
-const orderType = ref('')
-const orderStatus = ref('')
+const filterType = ref('')
+const filterStatus = ref('')
+const dateRange = ref<[Date, Date] | null>(null)
+const currentPage = ref(1)
+const pageSize = ref(10)
+const totalCount = ref(0)
+
+const typeMap: Record<string, { type: string; label: string }> = {
+  purchase: { type: '', label: '购买' },
+  shipment: { type: 'success', label: '发货' },
+  draw: { type: 'warning', label: '抽盒' }
+}
+
+const statusMap: Record<string, { type: string; label: string }> = {
+  pending: { type: 'warning', label: '待支付' },
+  paid: { type: '', label: '已支付' },
+  shipping: { type: 'info', label: '配送中' },
+  completed: { type: 'success', label: '已完成' },
+  cancelled: { type: 'danger', label: '已取消' }
+}
+
+const orderList = ref<any[]>([])
+
+// 详情弹窗
+const detailVisible = ref(false)
+const detailData = ref<any>({})
 
 // 发货弹窗
-const showShipDialogVisible = ref(false)
+const shipVisible = ref(false)
+const shipFormRef = ref<FormInstance>()
 const shipForm = reactive({
   orderId: '',
-  trackingNumber: '',
-  expressCompany: ''
+  orderNo: '',
+  expressCompany: '',
+  trackingNo: ''
 })
-
-// 订单详情弹窗
-const showOrderDetail = ref(false)
-const currentOrder = ref({})
-
-// 获取状态类型
-const getStatusType = (status: string) => {
-  switch (status) {
-    case 'pending': return 'warning'
-    case 'paid': return 'primary'
-    case 'shipping': return 'info'
-    case 'completed': return 'success'
-    case 'cancelled': return 'danger'
-    default: return 'info'
-  }
+const shipRules: FormRules = {
+  expressCompany: [{ required: true, message: '请选择快递公司', trigger: 'change' }],
+  trackingNo: [{ required: true, message: '请输入物流单号', trigger: 'blur' }]
 }
 
-// 获取状态文本
-const getStatusText = (status: string) => {
-  switch (status) {
-    case 'pending': return '待支付'
-    case 'paid': return '已支付'
-    case 'shipping': return '配送中'
-    case 'completed': return '已完成'
-    case 'cancelled': return '已取消'
-    default: return status
-  }
+const handleSearch = () => {
+  currentPage.value = 1
+  loadList()
 }
 
-// 搜索订单
-const searchOrders = () => {
-  // 实际项目中这里应该调用API搜索订单
-  ElMessage.info('搜索功能开发中')
+const resetFilter = () => {
+  searchKeyword.value = ''
+  filterType.value = ''
+  filterStatus.value = ''
+  dateRange.value = null
+  currentPage.value = 1
+  loadList()
 }
 
-// 刷新订单
-const refreshOrders = () => {
-  // 实际项目中这里应该调用API刷新订单
-  ElMessage.success('订单已刷新')
-}
-
-// 导出订单
 const exportOrders = () => {
-  // 实际项目中这里应该调用API导出订单
   ElMessage.success('订单导出成功')
 }
 
-// 查看订单详情
-const viewOrder = (row: any) => {
-  currentOrder.value = row
-  showOrderDetail.value = true
+const viewDetail = (row: any) => {
+  detailData.value = row
+  detailVisible.value = true
 }
 
-// 显示发货弹窗
-const showShipDialog = (row: any) => {
-  shipForm.orderId = row.id
-  showShipDialogVisible.value = true
-}
-
-// 确认发货
-const confirmShip = () => {
-  if (!shipForm.trackingNumber || !shipForm.expressCompany) {
-    ElMessage.error('请填写完整的发货信息！')
-    return
+const markPaid = async (row: any) => {
+  try {
+    await api.put(`/orders/${row._id || row.id}`, { status: 'paid' })
+    row.status = 'paid'
+    ElMessage.success('已标记为已支付')
+  } catch (e: any) {
+    ElMessage.error(e?.message || '操作失败')
   }
-  
-  // 实际项目中这里应该调用API更新订单状态
-  ElMessage.success('发货成功！')
-  showShipDialogVisible.value = false
 }
 
-// 更新订单状态
-const updateStatus = (row: any, status: string) => {
-  // 实际项目中这里应该调用API更新订单状态
-  row.status = status
-  ElMessage.success(`订单状态已更新为${getStatusText(status)}`)
+const openShipDialog = (row: any) => {
+  shipForm.orderId = row._id || row.id
+  shipForm.orderNo = row.orderNo
+  shipForm.expressCompany = ''
+  shipForm.trackingNo = ''
+  shipVisible.value = true
 }
+
+const confirmShip = async () => {
+  if (!shipFormRef.value) return
+  await shipFormRef.value.validate(async (valid) => {
+    if (!valid) return
+    shipSubmitting.value = true
+    try {
+      await api.put(`/orders/${shipForm.orderId}`, {
+        status: 'shipping',
+        expressCompany: shipForm.expressCompany,
+        trackingNo: shipForm.trackingNo
+      })
+      ElMessage.success('发货成功')
+      shipVisible.value = false
+      loadList()
+    } catch (e: any) {
+      ElMessage.error(e?.message || '发货失败')
+    } finally {
+      shipSubmitting.value = false
+    }
+  })
+}
+
+const cancelOrder = async (row: any) => {
+  try {
+    await api.put(`/orders/${row._id || row.id}`, { status: 'cancelled' })
+    row.status = 'cancelled'
+    ElMessage.success('订单已取消')
+  } catch (e: any) {
+    ElMessage.error(e?.message || '操作失败')
+  }
+}
+
+const loadList = async () => {
+  loading.value = true
+  try {
+    const params: any = {
+      page: currentPage.value,
+      pageSize: pageSize.value,
+      keyword: searchKeyword.value,
+      type: filterType.value,
+      status: filterStatus.value
+    }
+    if (dateRange.value) {
+      params.startDate = dateRange.value[0].toISOString()
+      params.endDate = dateRange.value[1].toISOString()
+    }
+    const res: any = await api.get('/orders', { params })
+    const data = res?.data || res || {}
+    orderList.value = (data.list || data || []).map((o: any) => ({
+      ...o,
+      id: o._id || o.id,
+      summary: (o.items || []).map((i: any) => `${i.name}×${i.quantity}`).join('、') || o.summary || '-'
+    }))
+    totalCount.value = data.total || orderList.value.length
+  } catch {
+    orderList.value = []
+    totalCount.value = 0
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  loadList()
+})
 </script>
 
 <style scoped>
 .order-manage {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
-.actions {
-  display: flex;
-  gap: 10px;
+.card {
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  padding: 20px;
 }
 
-.search-filter {
+.filter-bar {
+  padding: 16px 20px;
+}
+
+.filter-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
-.order-list {
-  background-color: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.order-item {
-  margin-bottom: 5px;
-  font-size: 14px;
-}
-
-.action-buttons {
+.filter-right {
+  margin-left: auto;
   display: flex;
   gap: 8px;
-  flex-wrap: nowrap;
-  align-items: center;
 }
 
-.order-detail {
+.price-text {
+  color: #FF4D4F;
+  font-weight: 600;
+}
+
+.table-footer {
   display: flex;
-  flex-direction: column;
-  gap: 20px;
+  justify-content: flex-end;
+  margin-top: 16px;
 }
 
 .detail-section {
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 15px;
+  margin-bottom: 20px;
 }
 
-.detail-section h3 {
-  font-size: 16px;
-  margin-bottom: 15px;
-  color: #333;
-}
-
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-@media (max-width: 768px) {
-  .actions {
-    flex-direction: column;
-  }
-  
-  .search-filter {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .order-list {
-    padding: 10px;
-  }
+.detail-section h4 {
+  font-size: 15px;
+  font-weight: 600;
+  color: #303133;
+  margin: 0 0 12px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #ebeef5;
 }
 </style>

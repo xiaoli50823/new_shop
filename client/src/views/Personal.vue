@@ -1,629 +1,807 @@
 <template>
-  <div class="personal">
-    <!-- 用户信息 -->
-    <div class="user-info">
-      <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=user%20avatar%20illustration&image_size=square" alt="用户头像" class="avatar">
-      <div class="user-details">
-        <h2>{{ userInfo.username }}</h2>
-        <p class="vip-level">VIP{{ userInfo.vipLevel }}</p>
-        <p class="user-id">ID: {{ userInfo.userId }}</p>
+  <div class="personal-page">
+    <!-- 用户头像区 -->
+    <div class="profile-header">
+      <div class="profile-bg"></div>
+      <div class="profile-content">
+        <div class="avatar-wrapper">
+          <img :src="userStore.avatar || '/default-avatar.png'" class="avatar" alt="avatar" />
+          <div class="vip-badge" v-if="userStore.vipLevel > 0">VIP{{ userStore.vipLevel }}</div>
+        </div>
+        <h2 class="username">{{ userStore.username }}</h2>
+        <span class="user-id">ID: {{ userStore.userInfo?.id || '---' }}</span>
       </div>
-      <el-button type="primary" size="small">编辑资料</el-button>
     </div>
 
-    <!-- 资产管理 -->
-    <div class="asset-section">
-      <h3 class="section-title">资产管理</h3>
-      <div class="asset-list">
-        <div class="asset-item">
-          <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=coin%20icon%20illustration&image_size=square" alt="盲盒币">
-          <div class="asset-info">
-            <h4>盲盒币</h4>
-            <p class="asset-value">{{ userAssets.blindBoxCoin }}</p>
-          </div>
-          <el-button size="small">充值</el-button>
-        </div>
-        <div class="asset-item">
-          <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=points%20icon%20illustration&image_size=square" alt="积分">
-          <div class="asset-info">
-            <h4>积分</h4>
-            <p class="asset-value">{{ userAssets.points }}</p>
-          </div>
-          <el-button size="small">兑换</el-button>
-        </div>
-        <div class="asset-item">
-          <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=coupoun%20icon%20illustration&image_size=square" alt="优惠券">
-          <div class="asset-info">
-            <h4>优惠券</h4>
-            <p class="asset-value">{{ userAssets.coupons }}</p>
-          </div>
-          <el-button size="small">查看</el-button>
+    <!-- 资产卡片 -->
+    <div class="asset-card">
+      <div class="asset-item" @click="goRecharge">
+        <span class="asset-value">{{ userStore.coins }}</span>
+        <span class="asset-label">盲盒币</span>
+        <span class="asset-btn">充值</span>
+      </div>
+      <div class="asset-divider"></div>
+      <div class="asset-item">
+        <span class="asset-value">{{ userStore.points }}</span>
+        <span class="asset-label">积分</span>
+        <span class="asset-btn">兑换</span>
+      </div>
+      <div class="asset-divider"></div>
+      <div class="asset-item" @click="showCoupons = true">
+        <span class="asset-value">{{ couponCount }}</span>
+        <span class="asset-label">优惠券</span>
+        <span class="asset-btn">查看</span>
+      </div>
+    </div>
+
+    <!-- 每日签到 -->
+    <div class="checkin-card" @click="handleCheckIn">
+      <div class="checkin-left">
+        <span class="checkin-icon">📅</span>
+        <div class="checkin-info">
+          <span class="checkin-title">每日签到</span>
+          <span class="checkin-days">已连续签到 {{ checkInDays }} 天</span>
         </div>
       </div>
+      <el-button
+        type="primary"
+        round
+        size="small"
+        :disabled="isCheckedIn"
+      >
+        {{ isCheckedIn ? '已签到' : '签到' }}
+      </el-button>
     </div>
 
     <!-- 订单管理 -->
     <div class="order-section">
-      <h3 class="section-title">订单管理</h3>
-      <div class="order-tabs">
-        <el-tabs v-model="activeOrderTab">
-          <el-tab-pane label="购买订单" name="purchase"></el-tab-pane>
-          <el-tab-pane label="发货订单" name="shipment"></el-tab-pane>
-        </el-tabs>
+      <div class="section-header">
+        <h3>📋 订单管理</h3>
+        <span class="section-more" @click="activeOrderTab = 'all'">全部 ></span>
       </div>
-      <div class="order-list">
-        <div v-for="order in orders" :key="order.id" class="order-item">
+      <div class="order-tabs">
+        <div
+          v-for="tab in orderTabs"
+          :key="tab.value"
+          class="order-tab"
+          :class="{ active: activeOrderTab === tab.value }"
+          @click="activeOrderTab = tab.value"
+        >
+          <span class="tab-icon">{{ tab.icon }}</span>
+          <span class="tab-label">{{ tab.label }}</span>
+        </div>
+      </div>
+      <div class="order-list" v-loading="orderLoading">
+        <div
+          v-for="order in orderList"
+          :key="order.id"
+          class="order-card"
+          @click="goOrderDetail(order.id)"
+        >
           <div class="order-header">
-            <span class="order-id">订单号: {{ order.id }}</span>
-            <span class="order-status" :class="order.status">{{ order.statusText }}</span>
+            <span class="order-no">订单号：{{ order.orderNo || order.id }}</span>
+            <span class="order-status" :class="getStatusClass(order.status)">{{ getStatusLabel(order.status) }}</span>
           </div>
-          <div class="order-content">
-            <div v-for="item in order.items" :key="item.id" class="order-product">
-              <img :src="item.image" :alt="item.name" class="product-img">
-              <div class="product-info">
-                <h4>{{ item.name }}</h4>
-                <p class="product-price">¥{{ item.price }} x {{ item.quantity }}</p>
-              </div>
+          <div class="order-body">
+            <img :src="order.image || order.coverImage || '/placeholder.png'" class="order-img" />
+            <div class="order-info">
+              <p class="order-name">{{ order.name || order.blindBoxName }}</p>
+              <span class="order-time">{{ formatDate(order.createdAt, 'YYYY-MM-DD HH:mm') }}</span>
             </div>
-          </div>
-          <div class="order-footer">
-            <span class="order-total">合计: ¥{{ order.total }}</span>
-            <div class="order-actions">
-              <el-button v-if="order.status === 'pending'" type="primary" size="small">支付</el-button>
-              <el-button v-if="order.status === 'shipping'" size="small">查看物流</el-button>
-              <el-button v-if="order.status === 'completed'" size="small">再次购买</el-button>
-            </div>
+            <span class="order-price">¥{{ formatPrice(order.amount || order.price) }}</span>
           </div>
         </div>
+        <el-empty v-if="!orderLoading && orderList.length === 0" description="暂无订单" :image-size="80" />
       </div>
     </div>
 
-    <!-- 会员成长体系 -->
-    <div class="vip-section">
-      <h3 class="section-title">会员成长</h3>
-      <div class="vip-progress">
-        <div class="vip-level-info">
-          <h4>当前等级: VIP{{ userInfo.vipLevel }}</h4>
-          <p>距离下一等级还需 {{ userInfo.nextLevelPoints }} 积分</p>
+    <!-- 会员成长 -->
+    <div class="vip-card">
+      <div class="vip-header">
+        <span class="vip-icon">👑</span>
+        <div class="vip-info">
+          <span class="vip-level">VIP {{ userStore.vipLevel }}</span>
+          <div class="vip-progress">
+            <div class="progress-bar">
+              <div class="progress-fill" :style="{ width: vipProgress + '%' }"></div>
+            </div>
+            <span class="progress-text">{{ userStore.userInfo?.vipExp || 0 }}/{{ userStore.userInfo?.vipNextLevelExp || 1000 }}</span>
+          </div>
         </div>
-        <el-progress :percentage="userInfo.progress" :format="formatProgress"></el-progress>
       </div>
-      <div class="vip-benefits">
-        <h4>会员特权</h4>
-        <ul class="benefits-list">
-          <li>每月赠送 {{ userInfo.vipLevel * 2 }} 张透视卡</li>
-          <li>抽盒享受 {{ 100 - userInfo.vipLevel * 2 }}% 折扣</li>
-          <li>优先购买限量版盲盒</li>
-          <li>专属客服通道</li>
-        </ul>
-      </div>
-      <div class="check-in">
-        <el-button type="success" @click="checkIn" :disabled="checkedIn">
-          {{ checkedIn ? '已签到' : '每日签到' }}
-        </el-button>
-        <p class="check-in-info">连续签到 {{ userInfo.checkInDays }} 天，再签 {{ 7 - userInfo.checkInDays }} 天可获得额外奖励</p>
+      <div class="vip-privileges">
+        <span class="privilege">🎁 专属折扣</span>
+        <span class="privilege">🚀 优先发货</span>
+        <span class="privilege">💎 限定奖品</span>
       </div>
     </div>
 
     <!-- 邀请好友 -->
-    <div class="invite-section">
-      <h3 class="section-title">邀请好友</h3>
-      <div class="invite-card">
-        <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=invite%20friends%20illustration&image_size=landscape_16_9" alt="邀请好友">
-        <div class="invite-info">
-          <h4>邀请好友注册并抽盒</h4>
-          <p>好友注册即送 100 积分</p>
-          <p>好友首次抽盒，你获得 50 盲盒币</p>
-          <el-button type="primary" @click="copyInviteLink">复制邀请链接</el-button>
-        </div>
+    <div class="invite-card">
+      <div class="invite-content">
+        <h4>🎉 邀请好友</h4>
+        <p>邀请好友注册，双方各得50盲盒币</p>
+      </div>
+      <el-button type="primary" round size="small" @click="copyInviteLink">复制链接</el-button>
+    </div>
+
+    <!-- 设置列表 -->
+    <div class="settings-list">
+      <div class="settings-item" @click="goAddress">
+        <span class="settings-icon">📍</span>
+        <span class="settings-label">收货地址</span>
+        <el-icon><ArrowRight /></el-icon>
+      </div>
+      <div class="settings-item" @click="goBoxCabinet">
+        <span class="settings-icon">📦</span>
+        <span class="settings-label">我的盒柜</span>
+        <el-icon><ArrowRight /></el-icon>
+      </div>
+      <div class="settings-item">
+        <span class="settings-icon">🔒</span>
+        <span class="settings-label">账号安全</span>
+        <el-icon><ArrowRight /></el-icon>
+      </div>
+      <div class="settings-item">
+        <span class="settings-icon">🛡️</span>
+        <span class="settings-label">隐私设置</span>
+        <el-icon><ArrowRight /></el-icon>
+      </div>
+      <div class="settings-item">
+        <span class="settings-icon">ℹ️</span>
+        <span class="settings-label">关于我们</span>
+        <el-icon><ArrowRight /></el-icon>
+      </div>
+      <div class="settings-item">
+        <span class="settings-icon">💬</span>
+        <span class="settings-label">联系客服</span>
+        <el-icon><ArrowRight /></el-icon>
+      </div>
+      <div class="settings-item logout" @click="handleLogout">
+        <span class="settings-icon">🚪</span>
+        <span class="settings-label">退出登录</span>
+        <el-icon><ArrowRight /></el-icon>
       </div>
     </div>
 
-    <!-- 设置 -->
-    <div class="settings-section">
-      <h3 class="section-title">设置</h3>
-      <div class="settings-list">
-        <div class="setting-item">
-          <span>账号安全</span>
-          <el-icon><arrow-right /></el-icon>
+    <!-- 底部安全距离 -->
+    <div class="bottom-safe"></div>
+
+    <!-- 优惠券弹窗 -->
+    <el-dialog v-model="showCoupons" title="我的优惠券" width="90%">
+      <div class="coupon-list">
+        <div v-for="coupon in coupons" :key="coupon.id" class="coupon-item">
+          <div class="coupon-left">
+            <span class="coupon-value">{{ coupon.value }}</span>
+            <span class="coupon-unit">{{ coupon.type === 'discount' ? '折' : '元' }}</span>
+          </div>
+          <div class="coupon-right">
+            <p class="coupon-name">{{ coupon.name }}</p>
+            <span class="coupon-condition">满{{ coupon.minAmount }}可用</span>
+            <span class="coupon-expire">{{ formatDate(coupon.expireAt, 'YYYY-MM-DD') }}到期</span>
+          </div>
         </div>
-        <div class="setting-item">
-          <span>收货地址</span>
-          <el-icon><arrow-right /></el-icon>
-        </div>
-        <div class="setting-item">
-          <span>隐私设置</span>
-          <el-icon><arrow-right /></el-icon>
-        </div>
-        <div class="setting-item">
-          <span>关于我们</span>
-          <el-icon><arrow-right /></el-icon>
-        </div>
-        <div class="setting-item">
-          <span>联系客服</span>
-          <el-icon><arrow-right /></el-icon>
-        </div>
-        <div class="setting-item logout">
-          <span>退出登录</span>
-          <el-icon><arrow-right /></el-icon>
-        </div>
+        <el-empty v-if="coupons.length === 0" description="暂无优惠券" :image-size="60" />
       </div>
-    </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ArrowRight } from '@element-plus/icons-vue'
+import { useUserStore } from '@/stores/user'
+import { userAPI, orderAPI } from '@/services/api'
+import { formatDate, formatPrice } from '@/utils/format'
+import { ElMessage } from 'element-plus'
 
-// 用户信息
-const userInfo = ref({
-  username: '小明',
-  userId: '123456789',
-  vipLevel: 3,
-  nextLevelPoints: 250,
-  progress: 75,
-  checkInDays: 5
+const router = useRouter()
+const userStore = useUserStore()
+
+// 签到
+const isCheckedIn = ref(false)
+const checkInDays = ref(0)
+
+// 优惠券
+const showCoupons = ref(false)
+const coupons = ref<any[]>([])
+const couponCount = computed(() => coupons.value.length)
+
+// 订单
+const activeOrderTab = ref('all')
+const orderLoading = ref(false)
+const orderList = ref<any[]>([])
+
+const orderTabs = [
+  { label: '全部', value: 'all', icon: '📋' },
+  { label: '待支付', value: 'pending', icon: '💰' },
+  { label: '配送中', value: 'shipping', icon: '🚚' },
+  { label: '已完成', value: 'completed', icon: '✅' }
+]
+
+// VIP 进度
+const vipProgress = computed(() => {
+  const exp = userStore.userInfo?.vipExp || 0
+  const next = userStore.userInfo?.vipNextLevelExp || 1000
+  return Math.min((exp / next) * 100, 100)
 })
 
-// 用户资产
-const userAssets = ref({
-  blindBoxCoin: 580,
-  points: 1250,
-  coupons: 3
-})
-
-// 订单数据
-const activeOrderTab = ref('purchase')
-const orders = ref([
-  {
-    id: '20260417001',
-    status: 'pending',
-    statusText: '待支付',
-    total: 250,
-    items: [
-      {
-        id: 1,
-        name: '海贼王一番赏',
-        image: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=one%20piece%20blind%20box&image_size=square',
-        price: 50,
-        quantity: 5
-      }
-    ]
-  },
-  {
-    id: '20260416001',
-    status: 'shipping',
-    statusText: '配送中',
-    total: 100,
-    items: [
-      {
-        id: 2,
-        name: '潮玩盲盒',
-        image: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=trendy%20toys%20blind%20box&image_size=square',
-        price: 39,
-        quantity: 2
-      },
-      {
-        id: 3,
-        name: '美妆盲盒',
-        image: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=beauty%20products%20blind%20box&image_size=square',
-        price: 69,
-        quantity: 1
-      }
-    ]
-  },
-  {
-    id: '20260415001',
-    status: 'completed',
-    statusText: '已完成',
-    total: 199,
-    items: [
-      {
-        id: 4,
-        name: '区块链盲盒',
-        image: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=blockchain%20blind%20box&image_size=square',
-        price: 199,
-        quantity: 1
-      }
-    ]
+const getStatusClass = (status: string) => {
+  const map: Record<string, string> = {
+    pending: 'status-pending',
+    paid: 'status-paid',
+    shipping: 'status-shipping',
+    completed: 'status-completed',
+    cancelled: 'status-cancelled'
   }
-])
-
-// 签到状态
-const checkedIn = ref(false)
-
-// 格式化进度条
-const formatProgress = (percentage: number) => {
-  return `${percentage}%`
+  return map[status] || ''
 }
 
-// 每日签到
-const checkIn = () => {
-  // 模拟签到逻辑
-  checkedIn.value = true
-  userInfo.value.checkInDays += 1
-  userAssets.value.points += 10
-  ElMessage.success('签到成功，获得10积分！')
+const getStatusLabel = (status: string) => {
+  const map: Record<string, string> = {
+    pending: '待支付',
+    paid: '已支付',
+    shipping: '配送中',
+    completed: '已完成',
+    cancelled: '已取消'
+  }
+  return map[status] || status
 }
 
-// 复制邀请链接
+const handleCheckIn = async () => {
+  if (isCheckedIn.value) {
+    ElMessage.info('今日已签到')
+    return
+  }
+  if (!userStore.userInfo?.id) return
+  try {
+    await userAPI.checkIn(userStore.userInfo.id)
+    isCheckedIn.value = true
+    checkInDays.value++
+    ElMessage.success(`签到成功！连续签到${checkInDays.value}天`)
+    userStore.fetchUserInfo()
+  } catch {}
+}
+
+const fetchOrders = async () => {
+  orderLoading.value = true
+  try {
+    const params: any = { page: 1, pageSize: 10 }
+    if (activeOrderTab.value !== 'all') params.status = activeOrderTab.value
+    const res = await orderAPI.getList(params)
+    orderList.value = res.data?.list || res.data || res.list || []
+  } catch {
+    orderList.value = []
+  } finally {
+    orderLoading.value = false
+  }
+}
+
+const fetchCoupons = async () => {
+  if (!userStore.userInfo?.id) return
+  try {
+    const res = await userAPI.getCoupons(userStore.userInfo.id)
+    coupons.value = res.data?.list || res.data || res.list || []
+  } catch {
+    coupons.value = []
+  }
+}
+
 const copyInviteLink = () => {
-  // 模拟复制链接
-  ElMessage.success('邀请链接已复制到剪贴板！')
+  const code = userStore.userInfo?.inviteCode || ''
+  const link = `${window.location.origin}/register?invite=${code}`
+  navigator.clipboard.writeText(link).then(() => {
+    ElMessage.success('邀请链接已复制')
+  }).catch(() => {
+    ElMessage.info('邀请码：' + code)
+  })
 }
+
+const goRecharge = () => router.push('/recharge')
+const goAddress = () => router.push('/address')
+const goBoxCabinet = () => router.push('/box-cabinet')
+const goOrderDetail = (id: number) => router.push(`/order/${id}`)
+
+const handleLogout = () => {
+  userStore.logout()
+}
+
+onMounted(() => {
+  if (!userStore.isLoggedIn) {
+    router.push('/login')
+    return
+  }
+  isCheckedIn.value = userStore.userInfo?.isCheckedIn || false
+  checkInDays.value = userStore.userInfo?.checkInDays || 0
+  fetchOrders()
+  fetchCoupons()
+})
 </script>
 
 <style scoped>
-.personal {
-  padding: 20px;
-  background-color: #f5f5f5;
+.personal-page {
   min-height: 100vh;
+  background: var(--bg-pink);
+  padding-bottom: 70px;
 }
 
-.user-info {
+/* 头像区 */
+.profile-header {
+  position: relative;
+  padding: 40px 16px 20px;
+  overflow: hidden;
+}
+
+.profile-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 180px;
+  background: var(--primary-gradient);
+  border-radius: 0 0 30px 30px;
+}
+
+.profile-content {
+  position: relative;
+  z-index: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  background-color: white;
-  padding: 20px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.avatar-wrapper {
+  position: relative;
+  margin-bottom: 10px;
 }
 
 .avatar {
-  width: 80px;
-  height: 80px;
+  width: 72px;
+  height: 72px;
   border-radius: 50%;
-  margin-right: 20px;
+  object-fit: cover;
+  border: 3px solid #FFFFFF;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.user-details {
-  flex: 1;
-}
-
-.user-details h2 {
-  font-size: 20px;
-  margin-bottom: 5px;
-}
-
-.vip-level {
-  display: inline-block;
-  background-color: #E6A23C;
-  color: white;
+.vip-badge {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
   padding: 2px 8px;
+  background: linear-gradient(135deg, #FFD700, #FFA502);
   border-radius: 10px;
-  font-size: 12px;
-  margin-bottom: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #FFFFFF;
+}
+
+.username {
+  font-size: 20px;
+  font-weight: 700;
+  color: #FFFFFF;
+  margin-bottom: 4px;
 }
 
 .user-id {
   font-size: 12px;
-  color: #666;
+  color: rgba(255, 255, 255, 0.8);
 }
 
-.section-title {
-  font-size: 18px;
-  font-weight: bold;
-  margin: 20px 0 15px;
-  padding-left: 10px;
-  border-left: 4px solid #409EFF;
-}
-
-.asset-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 15px;
-  background-color: white;
-  padding: 20px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+/* 资产卡片 */
+.asset-card {
+  display: flex;
+  align-items: center;
+  margin: -10px 16px 16px;
+  padding: 16px 0;
+  background: #FFFFFF;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  position: relative;
+  z-index: 2;
 }
 
 .asset-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 15px;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  transition: box-shadow 0.3s;
-}
-
-.asset-item:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.asset-item img {
-  width: 40px;
-  height: 40px;
-  object-fit: cover;
-}
-
-.asset-info {
   flex: 1;
-}
-
-.asset-info h4 {
-  font-size: 14px;
-  margin-bottom: 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
 }
 
 .asset-value {
-  font-size: 18px;
-  font-weight: bold;
-  color: #333;
-  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
 }
 
+.asset-label {
+  font-size: 12px;
+  color: var(--text-light);
+  margin: 2px 0 4px;
+}
+
+.asset-btn {
+  font-size: 11px;
+  color: var(--primary-pink);
+  font-weight: 500;
+}
+
+.asset-divider {
+  width: 1px;
+  height: 40px;
+  background: var(--border-color);
+}
+
+/* 签到 */
+.checkin-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 16px 16px;
+  padding: 14px 16px;
+  background: #FFFFFF;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+}
+
+.checkin-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.checkin-icon {
+  font-size: 28px;
+}
+
+.checkin-title {
+  font-size: 15px;
+  font-weight: 600;
+  display: block;
+}
+
+.checkin-days {
+  font-size: 12px;
+  color: var(--text-light);
+}
+
+/* 订单管理 */
 .order-section {
-  background-color: white;
-  padding: 20px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin: 0 16px 16px;
+  padding: 16px;
+  background: #FFFFFF;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.section-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.section-more {
+  font-size: 12px;
+  color: var(--text-light);
+  cursor: pointer;
 }
 
 .order-tabs {
-  margin-bottom: 20px;
+  display: flex;
+  margin-bottom: 14px;
+}
+
+.order-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.order-tab .tab-icon {
+  font-size: 20px;
+}
+
+.order-tab .tab-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.order-tab.active .tab-label {
+  color: var(--primary-pink);
+  font-weight: 600;
 }
 
 .order-list {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
+  min-height: 100px;
 }
 
-.order-item {
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 15px;
+.order-card {
+  padding: 12px;
+  background: #FAFAFA;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.order-card:active {
+  background: #F5F5F5;
 }
 
 .order-header {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 10px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 8px;
 }
 
-.order-id {
-  font-size: 14px;
-  color: #666;
+.order-no {
+  font-size: 12px;
+  color: var(--text-light);
 }
 
 .order-status {
-  font-size: 14px;
-  padding: 2px 8px;
-  border-radius: 10px;
-}
-
-.order-status.pending {
-  background-color: #E6A23C;
-  color: white;
-}
-
-.order-status.shipping {
-  background-color: #409EFF;
-  color: white;
-}
-
-.order-status.completed {
-  background-color: #67C23A;
-  color: white;
-}
-
-.order-content {
-  margin-bottom: 10px;
-}
-
-.order-product {
-  display: flex;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.order-product .product-img {
-  width: 60px;
-  height: 60px;
-  object-fit: cover;
-  border-radius: 4px;
-  margin-right: 10px;
-}
-
-.order-product .product-info h4 {
-  font-size: 14px;
-  margin-bottom: 5px;
-}
-
-.product-price {
   font-size: 12px;
-  color: #666;
-  margin: 0;
+  font-weight: 600;
 }
 
-.order-footer {
+.status-pending { color: var(--warning); }
+.status-paid { color: var(--primary-pink); }
+.status-shipping { color: #667eea; }
+.status-completed { color: var(--success); }
+.status-cancelled { color: var(--text-light); }
+
+.order-body {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding-top: 10px;
-  border-top: 1px solid #e0e0e0;
-}
-
-.order-total {
-  font-size: 16px;
-  font-weight: bold;
-  color: #F56C6C;
-}
-
-.order-actions {
-  display: flex;
   gap: 10px;
 }
 
-.vip-section {
-  background-color: white;
-  padding: 20px;
+.order-img {
+  width: 50px;
+  height: 50px;
   border-radius: 8px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.vip-progress {
-  margin-bottom: 20px;
-}
-
-.vip-level-info h4 {
-  font-size: 16px;
-  margin-bottom: 5px;
-}
-
-.vip-level-info p {
-  font-size: 14px;
-  color: #666;
-  margin-bottom: 10px;
-}
-
-.vip-benefits h4 {
-  font-size: 16px;
-  margin-bottom: 10px;
-}
-
-.benefits-list {
-  list-style: none;
-  padding: 0;
-  margin-bottom: 20px;
-}
-
-.benefits-list li {
-  font-size: 14px;
-  margin-bottom: 5px;
-  padding-left: 20px;
-  position: relative;
-}
-
-.benefits-list li::before {
-  content: '✓';
-  position: absolute;
-  left: 0;
-  color: #67C23A;
-  font-weight: bold;
-}
-
-.check-in {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: 15px;
-  border-top: 1px solid #e0e0e0;
-}
-
-.check-in-info {
-  font-size: 14px;
-  color: #666;
-  margin: 0;
-}
-
-.invite-section {
-  background-color: white;
-  padding: 20px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.invite-card {
-  display: flex;
-  gap: 20px;
-  align-items: center;
-  padding: 20px;
-  background-color: #f9f9f9;
-  border-radius: 8px;
-}
-
-.invite-card img {
-  width: 150px;
-  height: 100px;
   object-fit: cover;
-  border-radius: 4px;
 }
 
-.invite-info {
+.order-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.order-name {
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.order-time {
+  font-size: 11px;
+  color: var(--text-light);
+}
+
+.order-price {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--danger);
+}
+
+/* VIP */
+.vip-card {
+  margin: 0 16px 16px;
+  padding: 16px;
+  background: linear-gradient(135deg, #FFF8E1, #FFFFFF);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  border: 1px solid #FFE082;
+}
+
+.vip-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.vip-icon {
+  font-size: 32px;
+}
+
+.vip-info {
   flex: 1;
 }
 
-.invite-info h4 {
+.vip-level {
   font-size: 16px;
-  margin-bottom: 10px;
+  font-weight: 700;
+  color: #F57F17;
+  display: block;
+  margin-bottom: 6px;
 }
 
-.invite-info p {
-  font-size: 14px;
-  color: #666;
-  margin-bottom: 5px;
-}
-
-.settings-section {
-  background-color: white;
-  padding: 20px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.settings-list {
+.vip-progress {
   display: flex;
-  flex-direction: column;
-}
-
-.setting-item {
-  display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 15px 0;
-  border-bottom: 1px solid #e0e0e0;
+  gap: 8px;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 6px;
+  background: #F5F5F5;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #FFD700, #FFA502);
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+.progress-text {
+  font-size: 11px;
+  color: var(--text-light);
+  flex-shrink: 0;
+}
+
+.vip-privileges {
+  display: flex;
+  gap: 12px;
+}
+
+.privilege {
+  font-size: 12px;
+  color: #F57F17;
+  padding: 4px 10px;
+  background: rgba(255, 215, 0, 0.15);
+  border-radius: 12px;
+}
+
+/* 邀请好友 */
+.invite-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 16px 16px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, #FFE4EE, #FFFFFF);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.invite-content h4 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.invite-content p {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* 设置列表 */
+.settings-list {
+  margin: 0 16px 16px;
+  background: #FFFFFF;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.settings-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-color);
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: background 0.2s;
 }
 
-.setting-item:hover {
-  background-color: #f5f5f5;
-}
-
-.setting-item:last-child {
+.settings-item:last-child {
   border-bottom: none;
 }
 
-.setting-item.logout {
-  color: #F56C6C;
+.settings-item:active {
+  background: #FAFAFA;
 }
 
-@media (max-width: 768px) {
-  .user-info {
-    flex-direction: column;
-    text-align: center;
-  }
-  
-  .avatar {
-    margin-right: 0;
-    margin-bottom: 10px;
-  }
-  
-  .asset-list {
-    grid-template-columns: 1fr;
-  }
-  
-  .invite-card {
-    flex-direction: column;
-    text-align: center;
-  }
-  
-  .invite-card img {
-    width: 100%;
-    max-width: 300px;
-  }
+.settings-icon {
+  font-size: 20px;
+}
+
+.settings-label {
+  flex: 1;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.settings-item .el-icon {
+  color: var(--text-light);
+  font-size: 16px;
+}
+
+.settings-item.logout .settings-label {
+  color: var(--danger);
+}
+
+/* 优惠券弹窗 */
+.coupon-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.coupon-item {
+  display: flex;
+  align-items: center;
+  padding: 14px;
+  background: linear-gradient(135deg, #FFF5F7, #FFFFFF);
+  border-radius: 12px;
+  margin-bottom: 10px;
+  border-left: 4px solid var(--primary-pink);
+}
+
+.coupon-left {
+  display: flex;
+  align-items: baseline;
+  margin-right: 16px;
+  padding-right: 16px;
+  border-right: 1px dashed var(--border-color);
+}
+
+.coupon-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--primary-pink);
+}
+
+.coupon-unit {
+  font-size: 14px;
+  color: var(--primary-pink);
+  margin-left: 2px;
+}
+
+.coupon-right {
+  flex: 1;
+}
+
+.coupon-name {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.coupon-condition {
+  font-size: 12px;
+  color: var(--text-light);
+  display: block;
+}
+
+.coupon-expire {
+  font-size: 11px;
+  color: var(--text-light);
+}
+
+.bottom-safe {
+  height: 20px;
 }
 </style>
