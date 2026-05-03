@@ -9,7 +9,7 @@
         v-loading="loading.overview"
       >
         <div class="metric-icon" :style="{ background: item.bgColor }">
-          <span>{{ item.icon }}</span>
+          <component :is="item.icon" />
         </div>
         <div class="metric-body">
           <div class="metric-title">{{ item.title }}</div>
@@ -22,42 +22,20 @@
       </div>
     </div>
 
-    <!-- 第二行：转化漏斗 + 销售趋势 -->
+    <!-- 第二行：销售趋势 + 渠道分布 + 实时订单 -->
     <div class="row-two">
-      <div class="card funnel-card">
-        <div class="card-header">
-          <h3>转化漏斗</h3>
-        </div>
-        <div class="funnel-body" v-loading="loading.funnel">
-          <div
-            v-for="(step, idx) in funnelSteps"
-            :key="idx"
-            class="funnel-step"
-          >
-            <div class="funnel-bar-wrapper">
-              <div
-                class="funnel-bar"
-                :style="{
-                  width: step.percent + '%',
-                  background: funnelColors[idx] || '#1890FF'
-                }"
-              >
-                <span class="funnel-value">{{ step.value.toLocaleString() }}</span>
-              </div>
-            </div>
-            <div class="funnel-label">
-              <span class="funnel-name">{{ step.label }}</span>
-              <span class="funnel-rate">{{ step.percent }}%</span>
-            </div>
-            <div v-if="idx < funnelSteps.length - 1" class="funnel-convert">
-              转化率 {{ step.convertRate }}%
-            </div>
-          </div>
-        </div>
-      </div>
       <div class="card trend-card">
         <div class="card-header">
-          <h3>最近7天销售趋势</h3>
+          <h3>销售趋势</h3>
+          <div class="card-tabs">
+            <span
+              v-for="tab in trendTabs"
+              :key="tab.value"
+              class="tab-item"
+              :class="{ active: activeTrendTab === tab.value }"
+              @click="activeTrendTab = tab.value"
+            >{{ tab.label }}</span>
+          </div>
         </div>
         <div class="trend-body" v-loading="loading.salesTrend">
           <div class="chart-container">
@@ -66,7 +44,6 @@
             </div>
             <div class="chart-area">
               <svg :viewBox="`0 0 ${chartWidth} ${chartHeight}`" preserveAspectRatio="none" class="trend-svg">
-                <!-- 网格线 -->
                 <line
                   v-for="i in 5"
                   :key="'grid-' + i"
@@ -77,33 +54,35 @@
                   stroke="#f0f0f0"
                   stroke-width="1"
                 />
-                <!-- 渐变区域 -->
                 <defs>
                   <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="#1890FF" stop-opacity="0.3" />
-                    <stop offset="100%" stop-color="#1890FF" stop-opacity="0.02" />
+                    <stop offset="0%" stop-color="#4080FF" stop-opacity="0.3" />
+                    <stop offset="100%" stop-color="#4080FF" stop-opacity="0.02" />
+                  </linearGradient>
+                  <linearGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stop-color="#4080FF" />
+                    <stop offset="100%" stop-color="#9254DE" />
                   </linearGradient>
                 </defs>
                 <polygon :points="areaPoints" fill="url(#areaGradient)" />
-                <!-- 折线 -->
                 <polyline
                   :points="linePoints"
                   fill="none"
-                  stroke="#1890FF"
-                  stroke-width="2.5"
+                  stroke="url(#lineGradient)"
+                  stroke-width="3"
                   stroke-linecap="round"
                   stroke-linejoin="round"
                 />
-                <!-- 数据点 -->
                 <circle
                   v-for="(pt, idx) in dataPoints"
                   :key="'dot-' + idx"
                   :cx="pt.x"
                   :cy="pt.y"
-                  r="4"
+                  r="5"
                   fill="#fff"
-                  stroke="#1890FF"
-                  stroke-width="2"
+                  stroke="#4080FF"
+                  stroke-width="3"
+                  class="data-point"
                 />
               </svg>
               <div class="chart-x-axis">
@@ -111,90 +90,163 @@
               </div>
             </div>
           </div>
+          <div class="trend-legend">
+            <div class="legend-item">
+              <span class="legend-dot" style="background: #4080FF"></span>
+              <span>GMV</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-dot" style="background: #FF7D00"></span>
+              <span>订单数</span>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-
-    <!-- 第三行：奖池监控表格 -->
-    <div class="card monitor-card">
-      <div class="card-header">
-        <h3>奖池监控</h3>
-      </div>
-      <el-table
-        :data="prizeMonitorData"
-        stripe
-        border
-        v-loading="loading.prizeMonitor"
-        style="width: 100%"
-      >
-        <el-table-column prop="name" label="盲盒名称" min-width="160" />
-        <el-table-column label="隐藏款爆出率" width="160">
-          <template #default="{ row }">
-            <span :class="{ 'rate-warning': row.hiddenRate > row.expectedRate }">
-              {{ row.hiddenRate }}%
-            </span>
-            <span class="expected-rate"> (预期 {{ row.expectedRate }}%)</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="风险等级" width="100">
-          <template #default="{ row }">
-            <el-tag
-              :type="row.riskLevel === 'high' ? 'danger' : row.riskLevel === 'medium' ? 'warning' : 'success'"
-              size="small"
-            >
-              {{ row.riskLevel === 'high' ? '高' : row.riskLevel === 'medium' ? '中' : '低' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="totalDraws" label="总抽盒次数" width="120" />
-        <el-table-column prop="hiddenCount" label="隐藏款产出" width="120" />
-        <el-table-column label="操作" width="100" fixed="right">
-          <template #default="{ row }">
-            <el-button type="primary" link size="small" @click="viewMonitorDetail(row)">查看详情</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </div>
-
-    <!-- 第四行：最近订单 + 热门用户 -->
-    <div class="row-four">
-      <div class="card recent-orders-card">
+      <div class="card channel-card">
         <div class="card-header">
-          <h3>最近订单</h3>
-          <el-button type="primary" link @click="$router.push('/admin/order')">查看全部</el-button>
+          <h3>渠道分布</h3>
+          <span class="total-amount">总金额 ¥{{ totalChannelAmount }}</span>
         </div>
-        <div class="order-list" v-loading="loading.recentOrders">
+        <div class="channel-body" v-loading="loading.channel">
+          <div class="pie-chart">
+            <svg viewBox="0 0 200 200" class="pie-svg">
+              <circle
+                v-for="(segment, idx) in pieSegments"
+                :key="idx"
+                cx="100"
+                cy="100"
+                r="70"
+                :fill="segment.color"
+                :stroke="segment.color"
+                stroke-width="80"
+                :stroke-dasharray="segment.dashArray"
+                :stroke-dashoffset="segment.dashOffset"
+                transform="rotate(-90 100 100)"
+                class="pie-segment"
+              />
+            </svg>
+            <div class="pie-center">
+              <div class="pie-value">{{ pieCenterPercent }}%</div>
+              <div class="pie-label">TOP1渠道</div>
+            </div>
+          </div>
+          <div class="channel-list">
+            <div v-for="item in channelData" :key="item.name" class="channel-item">
+              <span class="channel-color" :style="{ background: item.color }"></span>
+              <span class="channel-name">{{ item.name }}</span>
+              <span class="channel-percent">{{ item.percent }}%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card orders-card">
+        <div class="card-header">
+          <h3>实时订单</h3>
+          <span class="more-link">更多 ></span>
+        </div>
+        <div class="orders-body" v-loading="loading.recentOrders">
           <div v-for="order in recentOrders" :key="order.id" class="order-item">
             <div class="order-info">
               <span class="order-id">{{ order.orderNo }}</span>
-              <el-tag :type="getOrderStatusType(order.status)" size="small">
-                {{ getOrderStatusText(order.status) }}
-              </el-tag>
-            </div>
-            <div class="order-meta">
               <span class="order-user">{{ order.username }}</span>
-              <span class="order-amount">¥{{ order.amount }}</span>
-              <span class="order-time">{{ order.createdAt }}</span>
             </div>
+            <div class="order-amount">¥{{ order.amount }}</div>
+            <div class="order-time">{{ order.createdAt }}</div>
           </div>
-          <el-empty v-if="!loading.recentOrders && recentOrders.length === 0" description="暂无订单" :image-size="60" />
         </div>
       </div>
-      <div class="card hot-users-card">
+    </div>
+
+    <!-- 第三行：热销盲盒TOP5 + 用户增长趋势 -->
+    <div class="row-three">
+      <div class="card hot-boxes-card">
         <div class="card-header">
-          <h3>热门用户</h3>
-          <el-button type="primary" link @click="$router.push('/admin/user')">查看全部</el-button>
+          <h3>热销盲盒TOP5</h3>
         </div>
-        <div class="user-list" v-loading="loading.hotUsers">
-          <div v-for="(user, idx) in hotUsers" :key="user.id" class="user-item">
-            <div class="user-rank" :class="'rank-' + (idx + 1)">{{ idx + 1 }}</div>
-            <div class="user-info">
-              <div class="user-name">{{ user.username }}</div>
-              <div class="user-stats">VIP{{ user.vipLevel }} · {{ user.drawCount }}次抽盒</div>
+        <div class="hot-boxes-body" v-loading="loading.hotBoxes">
+          <div v-for="(item, idx) in hotBoxes" :key="item.id" class="hot-box-item">
+            <div class="hot-rank" :class="'rank-' + (idx + 1)">{{ idx + 1 }}</div>
+            <img :src="item.image" :alt="item.name" class="hot-image" />
+            <div class="hot-info">
+              <span class="hot-name">{{ item.name }}</span>
+              <div class="hot-stats">
+                <span class="hot-sales">销量 {{ item.sales }}</span>
+                <span class="hot-revenue">¥{{ item.revenue }}</span>
+              </div>
             </div>
-            <div class="user-amount">¥{{ user.totalSpend }}</div>
           </div>
-          <el-empty v-if="!loading.hotUsers && hotUsers.length === 0" description="暂无数据" :image-size="60" />
+        </div>
+      </div>
+      <div class="card growth-card">
+        <div class="card-header">
+          <h3>用户增长趋势</h3>
+          <div class="card-tabs">
+            <span
+              v-for="tab in growthTabs"
+              :key="tab.value"
+              class="tab-item"
+              :class="{ active: activeGrowthTab === tab.value }"
+              @click="activeGrowthTab = tab.value"
+            >{{ tab.label }}</span>
+          </div>
+        </div>
+        <div class="growth-body" v-loading="loading.userGrowth">
+          <div class="bar-chart">
+            <div v-for="(item, idx) in userGrowthData" :key="idx" class="bar-item">
+              <div class="bar-wrapper">
+                <div
+                  class="bar-fill"
+                  :style="{ height: (item.value / maxGrowthValue * 100) + '%' }"
+                ></div>
+                <div class="bar-value">{{ item.value }}</div>
+              </div>
+              <div class="bar-label">{{ item.label }}</div>
+            </div>
+          </div>
+          <div class="growth-summary">
+            <div class="summary-item">
+              <span class="summary-label">新增用户</span>
+              <span class="summary-value">{{ totalNewUsers }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">累计用户</span>
+              <span class="summary-value">{{ totalUsers }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 第四行：系统状态 + 快捷操作 -->
+    <div class="row-four">
+      <div class="card status-card">
+        <div class="card-header">
+          <h3>系统状态</h3>
+        </div>
+        <div class="status-body">
+          <div v-for="item in systemStatus" :key="item.name" class="status-item">
+            <div class="status-icon" :class="item.status">
+              <component :is="item.icon" />
+            </div>
+            <div class="status-info">
+              <span class="status-name">{{ item.name }}</span>
+              <span class="status-desc">{{ item.desc }}</span>
+            </div>
+            <span class="status-badge" :class="item.status">{{ item.statusText }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="card actions-card">
+        <div class="card-header">
+          <h3>快捷操作</h3>
+        </div>
+        <div class="actions-body">
+          <div v-for="item in quickActions" :key="item.label" class="action-item" @click="handleAction(item.path)">
+            <div class="action-icon" :style="{ background: item.bgColor }">
+              <component :is="item.icon" />
+            </div>
+            <span class="action-label">{{ item.label }}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -204,49 +256,55 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import {
+  Reading, ShoppingCart, User, Clock, Wallet, Present,
+  Cpu, Setting,
+  Plus, Edit, Search, Download
+} from '@element-plus/icons-vue'
 import api from '../../services/api'
 
-// 加载状态
 const loading = reactive({
   overview: false,
-  funnel: false,
   salesTrend: false,
-  prizeMonitor: false,
+  channel: false,
   recentOrders: false,
-  hotUsers: false
+  hotBoxes: false,
+  userGrowth: false
 })
 
-// 核心指标
 const overviewData = ref({
   gmv: 0,
-  drawCount: 0,
+  orderCount: 0,
   newUsers: 0,
   activeUsers: 0,
-  pointsConsumed: 0,
+  repurchaseRate: 0,
+  avgPrice: 0,
   gmvTrend: 12.5,
-  drawTrend: 8.3,
+  orderTrend: 8.3,
   newUsersTrend: 5.7,
   activeUsersTrend: 3.2,
-  pointsTrend: 15.8
+  repurchaseTrend: 2.1,
+  priceTrend: -1.2
 })
 
 const animatedValues = reactive<Record<string, number>>({
   gmv: 0,
-  drawCount: 0,
+  orderCount: 0,
   newUsers: 0,
   activeUsers: 0,
-  pointsConsumed: 0
+  repurchaseRate: 0,
+  avgPrice: 0
 })
 
 const metricCards = computed(() => [
-  { key: 'gmv', title: '今日GMV', icon: '💰', prefix: '¥', bgColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', trendUp: overviewData.value.gmvTrend >= 0, trendValue: Math.abs(overviewData.value.gmvTrend) },
-  { key: 'drawCount', title: '抽盒次数', icon: '🎰', prefix: '', bgColor: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', trendUp: overviewData.value.drawTrend >= 0, trendValue: Math.abs(overviewData.value.drawTrend) },
-  { key: 'newUsers', title: '新增用户', icon: '👥', prefix: '', bgColor: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', trendUp: overviewData.value.newUsersTrend >= 0, trendValue: Math.abs(overviewData.value.newUsersTrend) },
-  { key: 'activeUsers', title: '活跃用户', icon: '🔥', prefix: '', bgColor: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', trendUp: overviewData.value.activeUsersTrend >= 0, trendValue: Math.abs(overviewData.value.activeUsersTrend) },
-  { key: 'pointsConsumed', title: '消耗积分', icon: '⭐', prefix: '', bgColor: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', trendUp: overviewData.value.pointsTrend >= 0, trendValue: Math.abs(overviewData.value.pointsTrend) }
+  { key: 'gmv', title: '今日GMV', icon: Wallet, prefix: '¥', bgColor: 'var(--ink)', trendUp: overviewData.value.gmvTrend >= 0, trendValue: Math.abs(overviewData.value.gmvTrend) },
+  { key: 'orderCount', title: '订单数', icon: ShoppingCart, prefix: '', bgColor: 'var(--ink)', trendUp: overviewData.value.orderTrend >= 0, trendValue: Math.abs(overviewData.value.orderTrend) },
+  { key: 'newUsers', title: '新增用户', icon: User, prefix: '', bgColor: 'var(--ink)', trendUp: overviewData.value.newUsersTrend >= 0, trendValue: Math.abs(overviewData.value.newUsersTrend) },
+  { key: 'activeUsers', title: '活跃用户', icon: Clock, prefix: '', bgColor: 'var(--ink)', trendUp: overviewData.value.activeUsersTrend >= 0, trendValue: Math.abs(overviewData.value.activeUsersTrend) },
+  { key: 'repurchaseRate', title: '复购率', icon: Reading, prefix: '', bgColor: 'var(--ink)', trendUp: overviewData.value.repurchaseTrend >= 0, trendValue: Math.abs(overviewData.value.repurchaseTrend) },
+  { key: 'avgPrice', title: '盲盒均价', icon: Present, prefix: '¥', bgColor: 'var(--ink)', trendUp: overviewData.value.priceTrend >= 0, trendValue: Math.abs(overviewData.value.priceTrend) }
 ])
 
-// 动画计数
 const animateValue = (key: string, target: number) => {
   const duration = 1200
   const startTime = Date.now()
@@ -256,19 +314,21 @@ const animateValue = (key: string, target: number) => {
     const elapsed = Date.now() - startTime
     const progress = Math.min(elapsed / duration, 1)
     const eased = 1 - Math.pow(1 - progress, 3)
-    animatedValues[key] = Math.round(start + diff * eased)
+    animatedValues[key] = key === 'repurchaseRate' ? parseFloat((start + diff * eased).toFixed(1)) : Math.round(start + diff * eased)
     if (progress < 1) requestAnimationFrame(tick)
   }
   requestAnimationFrame(tick)
 }
 
-// 转化漏斗
-const funnelSteps = ref<Array<{ label: string; value: number; percent: number; convertRate: number }>>([])
-const funnelColors = ['#1890FF', '#36CFC9', '#52C41A', '#FAAD14']
+const activeTrendTab = ref('today')
+const trendTabs = [
+  { label: '今日', value: 'today' },
+  { label: '7天', value: 'week' },
+  { label: '30天', value: 'month' }
+]
 
-// 销售趋势
-const chartWidth = 600
-const chartHeight = 200
+const chartWidth = 400
+const chartHeight = 160
 
 const salesTrendData = ref<{ labels: string[]; values: number[] }>({ labels: [], values: [] })
 
@@ -295,35 +355,93 @@ const areaPoints = computed(() => {
   return `0,${chartHeight} ${pts} ${chartWidth},${chartHeight}`
 })
 
-// 奖池监控
-const prizeMonitorData = ref<Array<{
-  id: string; name: string; hiddenRate: number; expectedRate: number;
-  riskLevel: string; totalDraws: number; hiddenCount: number
-}>>([])
+const channelData = ref([
+  { name: 'APP', percent: 40.2, color: '#4080FF' },
+  { name: 'H5', percent: 28.5, color: '#9254DE' },
+  { name: '小程序', percent: 18.7, color: '#52C41A' },
+  { name: 'PC', percent: 12.6, color: '#FF7D00' }
+])
 
-// 最近订单
+const totalChannelAmount = computed(() => {
+  return '12,846'
+})
+
+const pieCenterPercent = computed(() => {
+  return channelData.value[0]?.percent || 0
+})
+
+const pieSegments = computed(() => {
+  const total = 2 * Math.PI * 70
+  let offset = 0
+  return channelData.value.map((item, idx) => {
+    const length = (item.percent / 100) * total
+    const dashArray = `${length} ${total - length}`
+    const dashOffset = -offset
+    offset += length
+    return { color: item.color, dashArray, dashOffset }
+  })
+})
+
 const recentOrders = ref<Array<{
-  id: string; orderNo: string; username: string; status: string;
-  amount: number; createdAt: string
+  id: string; orderNo: string; username: string; amount: number; createdAt: string
 }>>([])
 
-// 热门用户
-const hotUsers = ref<Array<{
-  id: string; username: string; vipLevel: number;
-  drawCount: number; totalSpend: number
-}>>([])
+const hotBoxes = ref([
+  { id: '1', name: '海贼王系列盲盒', sales: 2680, revenue: '185,000', image: 'https://neeko-copilot.bytedance.net/api/text_to_image?prompt=one%20piece%20blind%20box%20luffy%20anime&image_size=square' },
+  { id: '2', name: '赛博朋克2077盲盒', sales: 2150, revenue: '125,850', image: 'https://neeko-copilot.bytedance.net/api/text_to_image?prompt=cyberpunk%202077%20blind%20box%20dark%20neon&image_size=square' },
+  { id: '3', name: '火影忍者系列盲盒', sales: 1950, revenue: '95,550', image: 'https://neeko-copilot.bytedance.net/api/text_to_image?prompt=naruto%20anime%20blind%20box%20figure&image_size=square' },
+  { id: '4', name: '迪士尼100周年盲盒', sales: 1320, revenue: '104,280', image: 'https://neeko-copilot.bytedance.net/api/text_to_image?prompt=disney%20mickey%20blind%20box%20celebration&image_size=square' },
+  { id: '5', name: '宝可梦系列盲盒', sales: 980, revenue: '48,020', image: 'https://neeko-copilot.bytedance.net/api/text_to_image?prompt=pokemon%20pikachu%20blind%20box%20figure&image_size=square' }
+])
 
-const getOrderStatusType = (status: string) => {
-  const map: Record<string, string> = { pending: 'warning', paid: '', shipping: 'info', completed: 'success', cancelled: 'danger' }
-  return (map[status] || '') as any
+const activeGrowthTab = ref('week')
+const growthTabs = [
+  { label: '7天', value: 'week' },
+  { label: '30天', value: 'month' },
+  { label: '90天', value: 'quarter' }
+]
+
+const userGrowthData = ref([
+  { label: '5-14', value: 280 },
+  { label: '5-15', value: 320 },
+  { label: '5-16', value: 458 },
+  { label: '5-17', value: 380 },
+  { label: '5-18', value: 520 },
+  { label: '5-19', value: 460 },
+  { label: '5-20', value: 580 }
+])
+
+const maxGrowthValue = computed(() => {
+  return Math.max(...userGrowthData.value.map(v => v.value)) * 1.1
+})
+
+const totalNewUsers = computed(() => {
+  return userGrowthData.value.reduce((sum, item) => sum + item.value, 0)
+})
+
+const totalUsers = computed(() => {
+  return '12,846'
+})
+
+const systemStatus = ref([
+  { name: '服务器状态', desc: '运行中', status: 'success', statusText: '运行中', icon: Cpu },
+  { name: '数据库状态', desc: '连接正常', status: 'success', statusText: '正常', icon: Cpu },
+  { name: 'Redis状态', desc: '运行中', status: 'success', statusText: '运行中', icon: Cpu },
+  { name: 'CDN状态', desc: '256GB / 500GB', status: 'success', statusText: '正常', icon: Cpu },
+  { name: '系统状态', desc: 'v2.1.0', status: 'success', statusText: '正常', icon: Setting }
+])
+
+const quickActions = ref([
+  { label: '添加盲盒', icon: Plus, path: '/admin/blind-box/create', bgColor: 'var(--ink)' },
+  { label: '编辑商品', icon: Edit, path: '/admin/blind-box', bgColor: 'var(--ink)' },
+  { label: '用户管理', icon: User, path: '/admin/user', bgColor: 'var(--ink)' },
+  { label: '数据导出', icon: Download, path: '/admin/report', bgColor: 'var(--ink)' }
+])
+
+const handleAction = (path: string) => {
+  window.location.href = path
 }
 
-const getOrderStatusText = (status: string) => {
-  const map: Record<string, string> = { pending: '待支付', paid: '已支付', shipping: '配送中', completed: '已完成', cancelled: '已取消' }
-  return map[status] || status
-}
-
-// 加载数据
 const loadOverview = async () => {
   loading.overview = true
   try {
@@ -331,67 +449,28 @@ const loadOverview = async () => {
     const data = res?.data || res || {}
     overviewData.value = {
       gmv: data.gmv ?? 128500,
-      drawCount: data.drawCount ?? 3250,
+      orderCount: data.orderCount ?? 3250,
       newUsers: data.newUsers ?? 458,
       activeUsers: data.activeUsers ?? 1250,
-      pointsConsumed: data.pointsConsumed ?? 8500,
+      repurchaseRate: data.repurchaseRate ?? 26.8,
+      avgPrice: data.avgPrice ?? 39.5,
       gmvTrend: data.gmvTrend ?? 12.5,
-      drawTrend: data.drawTrend ?? 8.3,
+      orderTrend: data.orderTrend ?? 8.3,
       newUsersTrend: data.newUsersTrend ?? 5.7,
       activeUsersTrend: data.activeUsersTrend ?? 3.2,
-      pointsTrend: data.pointsTrend ?? 15.8
+      repurchaseTrend: data.repurchaseTrend ?? 2.1,
+      priceTrend: data.priceTrend ?? -1.2
     }
-    animateValue('gmv', overviewData.value.gmv)
-    animateValue('drawCount', overviewData.value.drawCount)
-    animateValue('newUsers', overviewData.value.newUsers)
-    animateValue('activeUsers', overviewData.value.activeUsers)
-    animateValue('pointsConsumed', overviewData.value.pointsConsumed)
-  } catch (e) {
-    // 使用默认数据
-    overviewData.value = { gmv: 128500, drawCount: 3250, newUsers: 458, activeUsers: 1250, pointsConsumed: 8500, gmvTrend: 12.5, drawTrend: 8.3, newUsersTrend: 5.7, activeUsersTrend: 3.2, pointsTrend: 15.8 }
-    animateValue('gmv', 128500)
-    animateValue('drawCount', 3250)
-    animateValue('newUsers', 458)
-    animateValue('activeUsers', 1250)
-    animateValue('pointsConsumed', 8500)
+    Object.keys(animatedValues).forEach(key => {
+      animateValue(key, overviewData.value[key as keyof typeof overviewData.value] as number)
+    })
+  } catch {
+    overviewData.value = { gmv: 128500, orderCount: 3250, newUsers: 458, activeUsers: 1250, repurchaseRate: 26.8, avgPrice: 39.5, gmvTrend: 12.5, orderTrend: 8.3, newUsersTrend: 5.7, activeUsersTrend: 3.2, repurchaseTrend: 2.1, priceTrend: -1.2 }
+    Object.keys(animatedValues).forEach(key => {
+      animateValue(key, overviewData.value[key as keyof typeof overviewData.value] as number)
+    })
   } finally {
     loading.overview = false
-  }
-}
-
-const loadFunnel = async () => {
-  loading.funnel = true
-  try {
-    const res: any = await api.get('/dashboard/funnel')
-    const data = res?.data || res || {}
-    const steps = data.steps || [
-      { label: '访问', value: 10000 },
-      { label: '详情', value: 6000 },
-      { label: '支付', value: 3000 },
-      { label: '复购', value: 1500 }
-    ]
-    const maxVal = steps[0]?.value || 1
-    funnelSteps.value = steps.map((s: any, i: number) => ({
-      label: s.label,
-      value: s.value,
-      percent: Math.round((s.value / maxVal) * 100),
-      convertRate: i > 0 ? Math.round((s.value / steps[i - 1].value) * 100) : 100
-    }))
-  } catch {
-    const steps = [
-      { label: '访问', value: 10000 },
-      { label: '详情', value: 6000 },
-      { label: '支付', value: 3000 },
-      { label: '复购', value: 1500 }
-    ]
-    funnelSteps.value = steps.map((s, i) => ({
-      label: s.label,
-      value: s.value,
-      percent: Math.round((s.value / 10000) * 100),
-      convertRate: i > 0 ? Math.round((s.value / steps[i - 1].value) * 100) : 100
-    }))
-  } finally {
-    loading.funnel = false
   }
 }
 
@@ -414,31 +493,6 @@ const loadSalesTrend = async () => {
   }
 }
 
-const loadPrizeMonitor = async () => {
-  loading.prizeMonitor = true
-  try {
-    const res: any = await api.get('/dashboard/prize-monitor')
-    const data = res?.data || res || []
-    prizeMonitorData.value = Array.isArray(data) ? data : data.list || [
-      { id: '1', name: '海贼王一番赏', hiddenRate: 1.2, expectedRate: 1.0, riskLevel: 'medium', totalDraws: 1200, hiddenCount: 14 },
-      { id: '2', name: '火影忍者一番赏', hiddenRate: 0.8, expectedRate: 1.0, riskLevel: 'low', totalDraws: 850, hiddenCount: 7 },
-      { id: '3', name: '潮玩盲盒', hiddenRate: 2.5, expectedRate: 2.0, riskLevel: 'high', totalDraws: 1500, hiddenCount: 38 },
-      { id: '4', name: '美妆盲盒', hiddenRate: 1.5, expectedRate: 1.5, riskLevel: 'low', totalDraws: 980, hiddenCount: 15 },
-      { id: '5', name: '3C数码盲盒', hiddenRate: 0.5, expectedRate: 0.5, riskLevel: 'low', totalDraws: 750, hiddenCount: 4 }
-    ]
-  } catch {
-    prizeMonitorData.value = [
-      { id: '1', name: '海贼王一番赏', hiddenRate: 1.2, expectedRate: 1.0, riskLevel: 'medium', totalDraws: 1200, hiddenCount: 14 },
-      { id: '2', name: '火影忍者一番赏', hiddenRate: 0.8, expectedRate: 1.0, riskLevel: 'low', totalDraws: 850, hiddenCount: 7 },
-      { id: '3', name: '潮玩盲盒', hiddenRate: 2.5, expectedRate: 2.0, riskLevel: 'high', totalDraws: 1500, hiddenCount: 38 },
-      { id: '4', name: '美妆盲盒', hiddenRate: 1.5, expectedRate: 1.5, riskLevel: 'low', totalDraws: 980, hiddenCount: 15 },
-      { id: '5', name: '3C数码盲盒', hiddenRate: 0.5, expectedRate: 0.5, riskLevel: 'low', totalDraws: 750, hiddenCount: 4 }
-    ]
-  } finally {
-    loading.prizeMonitor = false
-  }
-}
-
 const loadRecentOrders = async () => {
   loading.recentOrders = true
   try {
@@ -448,48 +502,21 @@ const loadRecentOrders = async () => {
     if (!recentOrders.value.length) throw new Error('empty')
   } catch {
     recentOrders.value = [
-      { id: '1', orderNo: 'ORD20260430001', username: '小明', status: 'pending', amount: 250, createdAt: '2026-04-30 10:30' },
-      { id: '2', orderNo: 'ORD20260430002', username: '小红', status: 'paid', amount: 199, createdAt: '2026-04-30 09:15' },
-      { id: '3', orderNo: 'ORD20260429003', username: '小刚', status: 'shipping', amount: 50, createdAt: '2026-04-29 16:45' },
-      { id: '4', orderNo: 'ORD20260429004', username: '小美', status: 'completed', amount: 399, createdAt: '2026-04-29 14:20' },
-      { id: '5', orderNo: 'ORD20260428005', username: '小强', status: 'cancelled', amount: 69, createdAt: '2026-04-28 11:00' }
+      { id: '1', orderNo: '#220465320001', username: '星球玩家', amount: 69, createdAt: '15:49:00' },
+      { id: '2', orderNo: '#220465320002', username: '小明同学', amount: 128, createdAt: '15:45:23' },
+      { id: '3', orderNo: '#220465320003', username: '可爱多', amount: 59, createdAt: '15:42:15' },
+      { id: '4', orderNo: '#220465320004', username: '火影迷', amount: 79, createdAt: '15:38:40' },
+      { id: '5', orderNo: '#220465320005', username: '海贼王', amount: 199, createdAt: '15:35:12' }
     ]
   } finally {
     loading.recentOrders = false
   }
 }
 
-const loadHotUsers = async () => {
-  loading.hotUsers = true
-  try {
-    const res: any = await api.get('/dashboard/hot-users')
-    const data = res?.data || res || []
-    hotUsers.value = (Array.isArray(data) ? data : data.list || []).slice(0, 5)
-    if (!hotUsers.value.length) throw new Error('empty')
-  } catch {
-    hotUsers.value = [
-      { id: '1', username: '小红', vipLevel: 5, drawCount: 320, totalSpend: 15800 },
-      { id: '2', username: '小明', vipLevel: 3, drawCount: 215, totalSpend: 10750 },
-      { id: '3', username: '小美', vipLevel: 4, drawCount: 180, totalSpend: 8900 },
-      { id: '4', username: '小刚', vipLevel: 2, drawCount: 120, totalSpend: 5600 },
-      { id: '5', username: '小强', vipLevel: 1, drawCount: 85, totalSpend: 3200 }
-    ]
-  } finally {
-    loading.hotUsers = false
-  }
-}
-
-const viewMonitorDetail = (row: any) => {
-  ElMessage.info(`查看盲盒「${row.name}」的详细监控数据`)
-}
-
 onMounted(() => {
   loadOverview()
-  loadFunnel()
   loadSalesTrend()
-  loadPrizeMonitor()
   loadRecentOrders()
-  loadHotUsers()
 })
 </script>
 
@@ -498,41 +525,66 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  padding: 20px;
 }
 
-/* 卡片通用 */
 .card {
   background: #ffffff;
-  border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-  padding: 20px;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  padding: 24px;
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .card-header h3 {
   font-size: 16px;
   font-weight: 600;
-  color: #303133;
+  color: #333;
   margin: 0;
+}
+
+.card-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.tab-item {
+  padding: 6px 16px;
+  font-size: 13px;
+  color: #666;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tab-item.active {
+  background: #4080FF;
+  color: #ffffff;
+}
+
+.more-link {
+  font-size: 13px;
+  color: #999;
+  cursor: pointer;
 }
 
 /* 指标卡片 */
 .metrics-row {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 16px;
 }
 
 .metric-card {
   background: #ffffff;
-  border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
   padding: 20px;
   display: flex;
   align-items: center;
@@ -541,18 +593,19 @@ onMounted(() => {
 }
 
 .metric-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
 }
 
 .metric-icon {
-  width: 52px;
-  height: 52px;
-  border-radius: 12px;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
+  color: #ffffff;
+  font-size: 22px;
   flex-shrink: 0;
 }
 
@@ -563,14 +616,14 @@ onMounted(() => {
 
 .metric-title {
   font-size: 13px;
-  color: #909399;
-  margin-bottom: 4px;
+  color: #999;
+  margin-bottom: 6px;
 }
 
 .metric-value {
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 700;
-  color: #303133;
+  color: #333;
   line-height: 1.2;
   margin-bottom: 4px;
   font-variant-numeric: tabular-nums;
@@ -592,80 +645,24 @@ onMounted(() => {
 }
 
 .trend-label {
-  color: #C0C4CC;
+  color: #999;
 }
 
 /* 第二行 */
 .row-two {
   display: grid;
-  grid-template-columns: 3fr 2fr;
+  grid-template-columns: 2fr 1fr 1fr;
   gap: 20px;
-}
-
-/* 漏斗 */
-.funnel-body {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.funnel-step {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.funnel-bar-wrapper {
-  width: 100%;
-  height: 36px;
-  background: #f5f7fa;
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.funnel-bar {
-  height: 100%;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding-right: 12px;
-  transition: width 0.8s ease;
-  min-width: 60px;
-}
-
-.funnel-value {
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.funnel-label {
-  display: flex;
-  justify-content: space-between;
-  font-size: 13px;
-  color: #606266;
-}
-
-.funnel-rate {
-  color: #1890FF;
-  font-weight: 500;
-}
-
-.funnel-convert {
-  font-size: 11px;
-  color: #C0C4CC;
-  text-align: center;
 }
 
 /* 趋势图 */
 .trend-body {
-  height: 280px;
+  height: 240px;
 }
 
 .chart-container {
   display: flex;
-  height: 100%;
+  height: calc(100% - 30px);
   gap: 8px;
 }
 
@@ -673,14 +670,14 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  width: 40px;
+  width: 50px;
   text-align: right;
   padding: 8px 0 24px 0;
 }
 
 .y-label {
   font-size: 11px;
-  color: #C0C4CC;
+  color: #999;
 }
 
 .chart-area {
@@ -695,6 +692,14 @@ onMounted(() => {
   width: 100%;
 }
 
+.data-point {
+  transition: r 0.2s;
+}
+
+.data-point:hover {
+  r: 8;
+}
+
 .chart-x-axis {
   display: flex;
   justify-content: space-between;
@@ -703,18 +708,321 @@ onMounted(() => {
 
 .x-label {
   font-size: 11px;
-  color: #909399;
+  color: #999;
 }
 
-/* 奖池监控 */
-.rate-warning {
+.trend-legend {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 12px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #666;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+/* 渠道分布 */
+.total-amount {
+  font-size: 14px;
+  font-weight: 600;
+  color: #4080FF;
+}
+
+.channel-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.pie-chart {
+  position: relative;
+  width: 180px;
+  height: 180px;
+}
+
+.pie-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.pie-segment {
+  transition: opacity 0.2s;
+}
+
+.pie-segment:hover {
+  opacity: 0.8;
+}
+
+.pie-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.pie-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #4080FF;
+}
+
+.pie-label {
+  font-size: 12px;
+  color: #999;
+}
+
+.channel-list {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.channel-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.channel-color {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.channel-name {
+  flex: 1;
+  font-size: 13px;
+  color: #666;
+}
+
+.channel-percent {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+}
+
+/* 实时订单 */
+.orders-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.order-item {
+  padding: 12px;
+  background: #FAFAFA;
+  border-radius: 10px;
+}
+
+.order-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.order-id {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+}
+
+.order-user {
+  font-size: 12px;
+  color: #999;
+}
+
+.order-amount {
+  font-size: 16px;
+  font-weight: 700;
+  color: #FF4D4F;
+  margin-bottom: 4px;
+}
+
+.order-time {
+  font-size: 12px;
+  color: #999;
+}
+
+/* 第三行 */
+.row-three {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+/* 热销盲盒 */
+.hot-boxes-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hot-box-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #FAFAFA;
+  border-radius: 10px;
+}
+
+.hot-rank {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #E8E8E8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #999;
+}
+
+.hot-rank.rank-1 {
+  background: var(--ink);
+  color: #ffffff;
+}
+
+.hot-rank.rank-2 {
+  background: var(--charcoal);
+  color: #ffffff;
+}
+
+.hot-rank.rank-3 {
+  background: var(--charcoal-light);
+  color: #ffffff;
+}
+
+.hot-image {
+  width: 50px;
+  height: 50px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.hot-info {
+  flex: 1;
+}
+
+.hot-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.hot-stats {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: #999;
+}
+
+.hot-sales, .hot-revenue {
+  color: #666;
+}
+
+.hot-revenue {
   color: #FF4D4F;
   font-weight: 600;
 }
 
-.expected-rate {
+/* 用户增长趋势 */
+.growth-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.bar-chart {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  height: 160px;
+  padding: 0 8px;
+}
+
+.bar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: calc(100% / 7 - 8px);
+}
+
+.bar-wrapper {
+  position: relative;
+  width: 100%;
+  height: 120px;
+  background: #FAFAFA;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: var(--ink);
+  border-radius: 8px;
+  transition: height 0.6s ease;
+}
+
+.bar-value {
+  position: absolute;
+  top: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  font-weight: 600;
+  color: #666;
+}
+
+.bar-label {
+  font-size: 11px;
+  color: #999;
+}
+
+.growth-summary {
+  display: flex;
+  justify-content: center;
+  gap: 48px;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.summary-label {
   font-size: 12px;
-  color: #C0C4CC;
+  color: #999;
+}
+
+.summary-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #4080FF;
 }
 
 /* 第四行 */
@@ -724,135 +1032,169 @@ onMounted(() => {
   gap: 20px;
 }
 
-/* 最近订单 */
-.order-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.order-item {
-  padding: 12px;
-  background: #fafafa;
-  border-radius: 6px;
-  transition: background 0.2s;
-}
-
-.order-item:hover {
-  background: #f0f9ff;
-}
-
-.order-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 6px;
-}
-
-.order-id {
-  font-size: 13px;
-  font-weight: 600;
-  color: #303133;
-}
-
-.order-meta {
-  display: flex;
+/* 系统状态 */
+.status-body {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
   gap: 16px;
-  font-size: 12px;
-  color: #909399;
 }
 
-.order-amount {
-  color: #FF4D4F;
-  font-weight: 600;
-}
-
-/* 热门用户 */
-.user-list {
+.status-item {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-}
-
-.user-item {
-  display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px;
-  border-radius: 6px;
-  transition: background 0.2s;
+  gap: 8px;
+  padding: 16px 12px;
+  background: #FAFAFA;
+  border-radius: 12px;
 }
 
-.user-item:hover {
-  background: #fafafa;
-}
-
-.user-rank {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: #f0f0f0;
+.status-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
-  font-weight: 600;
-  color: #909399;
-  flex-shrink: 0;
+  font-size: 18px;
 }
 
-.user-rank.rank-1 {
-  background: linear-gradient(135deg, #FFD700, #FFA500);
-  color: #fff;
+.status-icon.success {
+  background: #E6F7FF;
+  color: #4080FF;
 }
 
-.user-rank.rank-2 {
-  background: linear-gradient(135deg, #C0C0C0, #A0A0A0);
-  color: #fff;
+.status-icon.warning {
+  background: #FFF7E6;
+  color: #FF7D00;
 }
 
-.user-rank.rank-3 {
-  background: linear-gradient(135deg, #CD7F32, #B8860B);
-  color: #fff;
-}
-
-.user-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.user-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: #303133;
-}
-
-.user-stats {
-  font-size: 12px;
-  color: #909399;
-  margin-top: 2px;
-}
-
-.user-amount {
-  font-size: 15px;
-  font-weight: 600;
+.status-icon.error {
+  background: #FFF1F0;
   color: #FF4D4F;
 }
 
-/* 响应式 */
-@media (max-width: 1200px) {
+.status-info {
+  text-align: center;
+}
+
+.status-name {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+}
+
+.status-desc {
+  display: block;
+  font-size: 11px;
+  color: #999;
+  margin-top: 2px;
+}
+
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.status-badge.success {
+  background: #E6F7FF;
+  color: #4080FF;
+}
+
+.status-badge.warning {
+  background: #FFF7E6;
+  color: #FF7D00;
+}
+
+.status-badge.error {
+  background: #FFF1F0;
+  color: #FF4D4F;
+}
+
+/* 快捷操作 */
+.actions-body {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.action-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  background: #FAFAFA;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.action-item:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.action-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 20px;
+}
+
+.action-label {
+  font-size: 13px;
+  color: #666;
+}
+
+@media (max-width: 1400px) {
   .metrics-row {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .row-two {
+    grid-template-columns: 2fr 1fr;
+  }
+  .orders-card {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 1100px) {
+  .row-two {
+    grid-template-columns: 1fr 1fr;
+  }
+  .status-body {
     grid-template-columns: repeat(3, 1fr);
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
+  .metrics-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .row-two,
+  .row-three,
+  .row-four {
+    grid-template-columns: 1fr;
+  }
+  .actions-body {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
   .metrics-row {
     grid-template-columns: 1fr;
   }
-  .row-two,
-  .row-four {
-    grid-template-columns: 1fr;
+  .status-body {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 </style>

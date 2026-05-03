@@ -3,11 +3,47 @@
  */
 const express = require('express');
 const { Op } = require('sequelize');
-const { User, UserCabinet, Order, Coupon, DrawRecord, BlindBox, Prize, OrderItem } = require('../models');
+const { User, UserCabinet, Order, Coupon, DrawRecord, BlindBox, Prize, OrderItem, Address } = require('../models');
 const { auth, adminOnly } = require('../middleware/auth');
 const { idParamRules, paginationRules } = require('../middleware/validate');
+const { notifyUserUpdate, notifyPointsChange, notifyCoinChange, notifyCheckIn } = require('../utils/websocket');
 
 const router = express.Router();
+
+/**
+ * 获取当前用户信息（profile）
+ */
+router.get('/profile', auth, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ code: 404, message: '用户不存在' });
+    }
+    res.json({
+      code: 200,
+      data: {
+        user_info: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          phone: user.phone,
+          avatar: user.avatar,
+          vip_level: user.vip_level,
+          points: user.points,
+          blind_box_coin: user.blind_box_coin,
+          check_in_days: user.check_in_days,
+          last_check_in: user.last_check_in,
+          role: user.role,
+          status: user.status
+        }
+      },
+      message: 'success'
+    });
+  } catch (err) {
+    console.error('获取用户信息失败:', err);
+    res.status(500).json({ code: 500, message: '服务器内部错误' });
+  }
+});
 
 /**
  * 获取用户列表（管理员）
@@ -16,7 +52,29 @@ router.get('/', auth, adminOnly, paginationRules, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const pageSize = parseInt(req.query.pageSize) || 20;
+    const { keyword, vipLevel, status, role, startDate, endDate } = req.query;
+
+    const where = {};
+
+    if (keyword) {
+      where[Op.or] = [
+        { username: { [Op.like]: `%${keyword}%` } },
+        { email: { [Op.like]: `%${keyword}%` } },
+        { phone: { [Op.like]: `%${keyword}%` } }
+      ];
+    }
+    if (vipLevel) where.vip_level = parseInt(vipLevel);
+    if (status) where.status = status;
+    if (role) where.role = role;
+
+    if (startDate && endDate) {
+      where.created_at = {
+        [Op.between]: [new Date(startDate), new Date(endDate)]
+      };
+    }
+
     const { rows, count } = await User.findAndCountAll({
+      where,
       limit: pageSize,
       offset: (page - 1) * pageSize,
       order: [['id', 'DESC']]
@@ -53,7 +111,6 @@ router.get('/:id', idParamRules, async (req, res) => {
  */
 router.put('/:id', auth, idParamRules, async (req, res) => {
   try {
-    // 只能更新自己的信息，管理员除外
     if (req.user.id !== parseInt(req.params.id) && req.user.role !== 'admin') {
       return res.status(403).json({ code: 403, message: '无权修改其他用户信息' });
     }
@@ -63,9 +120,10 @@ router.put('/:id', auth, idParamRules, async (req, res) => {
       return res.status(404).json({ code: 404, message: '用户不存在' });
     }
 
-    // 允许更新的字段
+    const oldPoints = user.points;
+    const oldCoin = user.blind_box_coin;
+
     const allowed = ['username', 'phone', 'avatar'];
-    // 管理员额外可改
     if (req.user.role === 'admin') {
       allowed.push('vip_level', 'points', 'blind_box_coin', 'role', 'status');
     }
@@ -76,7 +134,20 @@ router.put('/:id', auth, idParamRules, async (req, res) => {
     });
 
     await user.update(updates);
-    res.json({ code: 200, data: user.toJSON(), message: '更新成功' });
+
+    const userData = user.toJSON();
+
+    if (updates.points !== undefined && updates.points !== oldPoints) {
+      notifyPointsChange(user.id, user.points, '管理员修改');
+    }
+
+    if (updates.blind_box_coin !== undefined && updates.blind_box_coin !== oldCoin) {
+      notifyCoinChange(user.id, user.blind_box_coin, '管理员修改');
+    }
+
+    notifyUserUpdate(user.id, userData);
+
+    res.json({ code: 200, data: userData, message: '更新成功' });
   } catch (err) {
     console.error('更新用户信息失败:', err);
     res.status(500).json({ code: 500, message: '服务器内部错误' });
@@ -102,12 +173,10 @@ router.post('/:id/check-in', auth, idParamRules, async (req, res) => {
       return res.status(400).json({ code: 400, message: '今日已签到' });
     }
 
-    // 判断是否连续签到（昨天签过）
     const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
     const isConsecutive = user.last_check_in === yesterday;
     const newCheckInDays = isConsecutive ? user.check_in_days + 1 : 1;
 
-    // 基础积分 + 连续签到额外奖励
     let bonusPoints = 10;
     if (newCheckInDays >= 7) bonusPoints += 20;
     else if (newCheckInDays >= 3) bonusPoints += 10;
@@ -118,13 +187,18 @@ router.post('/:id/check-in', auth, idParamRules, async (req, res) => {
       last_check_in: today
     });
 
+    const checkInData = {
+      check_in_days: newCheckInDays,
+      points_earned: bonusPoints,
+      total_points: user.points
+    };
+
+    notifyCheckIn(user.id, checkInData);
+    notifyPointsChange(user.id, user.points, '签到奖励');
+
     res.json({
       code: 200,
-      data: {
-        check_in_days: newCheckInDays,
-        points_earned: bonusPoints,
-        total_points: user.points + bonusPoints
-      },
+      data: checkInData,
       message: '签到成功'
     });
   } catch (err) {
@@ -154,17 +228,17 @@ router.post('/:id/recycle', auth, idParamRules, async (req, res) => {
       return res.status(404).json({ code: 404, message: '盒柜商品不存在或不可回收' });
     }
 
-    // 回收价值 = 抽盒价格的 60%
     const blindBox = await BlindBox.findByPk(cabinetItem.blind_box_id);
     const recycleValue = blindBox ? (parseFloat(blindBox.price) * 0.6).toFixed(2) : 0;
 
     await cabinetItem.update({ status: 'recycled', recycle_value: recycleValue });
 
-    // 增加盲盒币
     const user = await User.findByPk(req.params.id);
     await user.update({
       blind_box_coin: parseFloat(user.blind_box_coin) + parseFloat(recycleValue)
     });
+
+    notifyCoinChange(user.id, user.blind_box_coin, '回收商品');
 
     res.json({
       code: 200,
@@ -220,8 +294,14 @@ router.get('/:id/cabinet', auth, idParamRules, async (req, res) => {
       return res.status(403).json({ code: 403, message: '无权查看' });
     }
 
+    const { status } = req.query;
+    const where = { user_id: req.params.id };
+    if (status) {
+      where.status = status;
+    }
+
     const items = await UserCabinet.findAll({
-      where: { user_id: req.params.id },
+      where,
       include: [
         { model: BlindBox, as: 'blindBox', attributes: ['id', 'name'] },
         { model: Prize, as: 'prize', attributes: ['id', 'name', 'rarity'] }
@@ -245,17 +325,24 @@ router.post('/:id/cabinet/ship', auth, idParamRules, async (req, res) => {
       return res.status(403).json({ code: 403, message: '无权操作' });
     }
 
-    const { cabinetIds, address, contact, phone } = req.body;
-    if (!cabinetIds || !Array.isArray(cabinetIds) || cabinetIds.length === 0) {
+    const { itemIds, addressId } = req.body;
+    if (!itemIds || !Array.isArray(itemIds) || itemIds.length === 0) {
       return res.status(400).json({ code: 400, message: '请选择要发货的商品' });
     }
-    if (!address) {
-      return res.status(400).json({ code: 400, message: '请填写收货地址' });
+    if (!addressId) {
+      return res.status(400).json({ code: 400, message: '请选择收货地址' });
     }
+
+    const addr = await Address.findOne({ where: { id: addressId, user_id: req.user.id } });
+    if (!addr) {
+      return res.status(404).json({ code: 404, message: '收货地址不存在' });
+    }
+
+    const address = `${addr.province}${addr.city}${addr.district}${addr.detail}`;
 
     // 查找所有待发货的盒柜商品
     const items = await UserCabinet.findAll({
-      where: { id: cabinetIds, user_id: req.params.id, status: 'pending' }
+      where: { id: itemIds, user_id: req.params.id, status: 'pending' }
     });
 
     if (items.length === 0) {
@@ -277,8 +364,8 @@ router.post('/:id/cabinet/ship', auth, idParamRules, async (req, res) => {
       status: 'pending',
       total,
       shipping_address: address,
-      shipping_contact: contact || '',
-      shipping_phone: phone || ''
+      shipping_contact: addr.name || '',
+      shipping_phone: addr.phone || ''
     });
 
     // 更新盒柜商品状态

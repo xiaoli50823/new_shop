@@ -195,7 +195,7 @@ onMounted(() => {
 <style scoped>
 .address-page {
   min-height: 100vh;
-  background: var(--bg-pink);
+  background: var(--beige);
   padding-bottom: 80px;
 }
 
@@ -205,7 +205,7 @@ onMounted(() => {
   justify-content: space-between;
   padding: 14px 16px;
   background: #FFFFFF;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -214,6 +214,7 @@ onMounted(() => {
 .page-header h2 {
   font-size: 17px;
   font-weight: 600;
+  color: var(--text-primary);
 }
 
 .back-icon {
@@ -232,7 +233,7 @@ onMounted(() => {
   border-radius: var(--radius-card);
   padding: 14px 16px;
   margin-bottom: 10px;
-  box-shadow: var(--shadow-card);
+  border: 1px solid var(--border);
 }
 
 .address-content {
@@ -250,6 +251,7 @@ onMounted(() => {
 .address-name {
   font-size: 15px;
   font-weight: 600;
+  color: var(--text-primary);
 }
 
 .address-phone {
@@ -259,7 +261,7 @@ onMounted(() => {
 
 .default-tag {
   padding: 2px 8px;
-  background: var(--primary-gradient);
+  background: var(--ink);
   color: #FFFFFF;
   font-size: 10px;
   border-radius: 10px;
@@ -276,7 +278,7 @@ onMounted(() => {
   display: flex;
   gap: 16px;
   padding-top: 10px;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--border-light);
 }
 
 .action-btn {

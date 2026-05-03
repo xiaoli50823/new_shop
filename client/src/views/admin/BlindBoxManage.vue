@@ -12,13 +12,13 @@
         >
           <template #prefix><el-icon><Search /></el-icon></template>
         </el-input>
-        <el-select v-model="filterType" placeholder="类型筛选" clearable style="width: 150px">
+        <el-select v-model="filterType" placeholder="类型筛选" clearable style="width: 150px" @change="handleSearch">
           <el-option label="全部" value="" />
           <el-option label="一番赏" value="lottery" />
           <el-option label="无限盲盒" value="infinite" />
           <el-option label="哈希盲盒" value="hash" />
         </el-select>
-        <el-select v-model="filterStatus" placeholder="状态筛选" clearable style="width: 130px">
+        <el-select v-model="filterStatus" placeholder="状态筛选" clearable style="width: 130px" @change="handleSearch">
           <el-option label="全部" value="" />
           <el-option label="上架" value="active" />
           <el-option label="下架" value="inactive" />
@@ -38,7 +38,7 @@
     <!-- 表格 -->
     <div class="card">
       <el-table
-        :data="filteredBoxes"
+        :data="boxList"
         stripe
         border
         v-loading="loading"
@@ -200,7 +200,7 @@
           <el-table-column label="稀有度" width="120">
             <template #default="{ row }">
               <el-select v-model="row.rarity" size="small" style="width: 100%">
-                <el-option label="普通" value="normal" />
+                <el-option label="普通" value="common" />
                 <el-option label="稀有" value="rare" />
                 <el-option label="超稀有" value="super_rare" />
                 <el-option label="隐藏款" value="hidden" />
@@ -248,20 +248,6 @@ const typeTagMap: Record<string, { type: string; label: string }> = {
 // 盲盒列表
 const boxList = ref<any[]>([])
 
-const filteredBoxes = computed(() => {
-  let list = boxList.value
-  if (searchKeyword.value) {
-    list = list.filter(b => b.name?.includes(searchKeyword.value))
-  }
-  if (filterType.value) {
-    list = list.filter(b => b.type === filterType.value)
-  }
-  if (filterStatus.value) {
-    list = list.filter(b => b.status === filterStatus.value)
-  }
-  return list
-})
-
 // 弹窗
 const dialogVisible = ref(false)
 const isEdit = ref(false)
@@ -295,7 +281,7 @@ const probabilityTotal = computed(() => {
 })
 
 const addPrize = () => {
-  form.prizes.push({ name: '', probability: 0, stock: 0, rarity: 'normal' })
+  form.prizes.push({ name: '', probability: 0, stock: 0, rarity: 'common' })
 }
 
 const removePrize = (index: number) => {
@@ -320,8 +306,8 @@ const openEditDialog = (row: any) => {
     price: row.price || 0,
     type: row.type || 'infinite',
     description: row.description || '',
-    coverUrl: row.coverUrl || row.cover || '',
-    saleTime: row.saleTime ? new Date(row.saleTime) : null,
+    coverUrl: row.coverUrl || row.cover_image || row.cover || '',
+    saleTime: (row.saleTime || row.sale_time) ? new Date(row.saleTime || row.sale_time) : null,
     status: row.status || 'active',
     stock: row.stock || 0,
     guarantee: row.guarantee || 0,
@@ -330,7 +316,7 @@ const openEditDialog = (row: any) => {
       name: p.name || '',
       probability: p.probability || 0,
       stock: p.stock || 0,
-      rarity: p.rarity || 'normal'
+      rarity: p.rarity || 'common'
     }))
   })
   dialogVisible.value = true
@@ -338,7 +324,7 @@ const openEditDialog = (row: any) => {
 
 const submitForm = async () => {
   if (!formRef.value) return
-  await formRef.value.validate(async (valid) => {
+  await formRef.value.validate(async (valid: boolean) => {
     if (!valid) return
     submitting.value = true
     try {

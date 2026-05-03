@@ -12,16 +12,16 @@
         >
           <template #prefix><el-icon><Search /></el-icon></template>
         </el-input>
-        <el-select v-model="filterVip" placeholder="VIP等级" clearable style="width: 130px">
+        <el-select v-model="filterVip" placeholder="VIP等级" clearable style="width: 130px" @change="handleSearch">
           <el-option label="全部" value="" />
           <el-option v-for="n in 10" :key="n" :label="'VIP' + n" :value="String(n)" />
         </el-select>
-        <el-select v-model="filterStatus" placeholder="状态" clearable style="width: 120px">
+        <el-select v-model="filterStatus" placeholder="状态" clearable style="width: 120px" @change="handleSearch">
           <el-option label="全部" value="" />
           <el-option label="活跃" value="active" />
           <el-option label="封禁" value="banned" />
         </el-select>
-        <el-select v-model="filterRole" placeholder="角色" clearable style="width: 120px">
+        <el-select v-model="filterRole" placeholder="角色" clearable style="width: 120px" @change="handleSearch">
           <el-option label="全部" value="" />
           <el-option label="普通用户" value="user" />
           <el-option label="管理员" value="admin" />
@@ -33,6 +33,7 @@
           start-placeholder="注册开始"
           end-placeholder="注册结束"
           style="width: 260px"
+          @change="handleSearch"
         />
         <el-button @click="resetFilter">重置</el-button>
         <div class="filter-right">
@@ -89,9 +90,10 @@
           </template>
         </el-table-column>
         <el-table-column prop="createdAt" label="注册时间" width="170" />
-        <el-table-column label="操作" width="140" fixed="right">
+        <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="viewUser(row)">查看</el-button>
+            <el-button type="warning" link size="small" @click="editUserAssets(row)">编辑</el-button>
             <el-popconfirm
               :title="row.status === 'active' ? '确定封禁该用户？' : '确定解封该用户？'"
               @confirm="toggleUserStatus(row)"
@@ -175,6 +177,34 @@
       </el-tabs>
       <template #footer>
         <el-button @click="detailVisible = false">关闭</el-button>
+        <el-button type="primary" @click="editUserAssets(detailUser)">编辑资产</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 编辑用户资产弹窗 -->
+    <el-dialog v-model="editAssetsVisible" title="编辑用户资产" width="500px" destroy-on-close>
+      <el-form ref="editAssetsFormRef" :model="editAssetsForm" :rules="editAssetsRules" label-width="100px">
+        <el-form-item label="用户名">
+          <el-input :value="editAssetsForm.username" disabled />
+        </el-form-item>
+        <el-form-item label="积分" prop="points">
+          <el-input-number v-model="editAssetsForm.points" :min="0" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="盲盒币" prop="blindBoxCoin">
+          <el-input-number v-model="editAssetsForm.blindBoxCoin" :min="0" :precision="2" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="VIP等级" prop="vipLevel">
+          <el-select v-model="editAssetsForm.vipLevel" style="width: 100%">
+            <el-option v-for="n in 10" :key="n" :label="'VIP' + n" :value="n" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="修改原因" prop="reason">
+          <el-input v-model="editAssetsForm.reason" type="textarea" :rows="3" placeholder="请输入修改原因" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="editAssetsVisible = false">取消</el-button>
+        <el-button type="primary" :loading="editAssetsSubmitting" @click="confirmEditAssets">确认修改</el-button>
       </template>
     </el-dialog>
 
@@ -210,10 +240,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Search, Download } from '@element-plus/icons-vue'
 import api from '../../services/api'
+import { wsService } from '@/services/websocket'
 
 const loading = ref(false)
 const detailLoading = ref(false)
@@ -250,6 +281,24 @@ const batchSmsFormRef = ref<FormInstance>()
 const batchSmsForm = reactive({ content: '' })
 const batchSmsRules: FormRules = {
   content: [{ required: true, message: '请输入短信内容', trigger: 'blur' }]
+}
+
+const editAssetsVisible = ref(false)
+const editAssetsFormRef = ref<FormInstance>()
+const editAssetsSubmitting = ref(false)
+const editAssetsForm = reactive({
+  id: 0,
+  username: '',
+  points: 0,
+  blindBoxCoin: 0,
+  vipLevel: 1,
+  reason: ''
+})
+const editAssetsRules: FormRules = {
+  points: [{ required: true, message: '请输入积分', trigger: 'blur' }],
+  blindBoxCoin: [{ required: true, message: '请输入盲盒币', trigger: 'blur' }],
+  vipLevel: [{ required: true, message: '请选择VIP等级', trigger: 'change' }],
+  reason: [{ required: true, message: '请输入修改原因', trigger: 'blur' }]
 }
 
 const getVipType = (level: number) => {
@@ -354,7 +403,7 @@ const openBatchCoin = () => {
 
 const confirmBatchCoin = async () => {
   if (!batchCoinFormRef.value) return
-  await batchCoinFormRef.value.validate(async (valid) => {
+  await batchCoinFormRef.value.validate(async (valid: boolean) => {
     if (!valid) return
     batchSubmitting.value = true
     try {
@@ -378,7 +427,7 @@ const openBatchSms = () => {
 
 const confirmBatchSms = async () => {
   if (!batchSmsFormRef.value) return
-  await batchSmsFormRef.value.validate(async (valid) => {
+  await batchSmsFormRef.value.validate(async (valid: boolean) => {
     if (!valid) return
     batchSubmitting.value = true
     try {
@@ -426,7 +475,94 @@ const loadList = async () => {
 
 onMounted(() => {
   loadList()
+  initWebSocketListeners()
 })
+
+onUnmounted(() => {
+  removeWebSocketListeners()
+})
+
+const initWebSocketListeners = () => {
+  wsService.on('user-data-changed', handleUserChanged)
+  wsService.on('user-points-changed', handleUserPointsChanged)
+  wsService.on('user-coin-changed', handleUserCoinChanged)
+  wsService.on('user-check-in', handleUserCheckIn)
+  wsService.on('user-exchange', handleUserExchange)
+}
+
+const removeWebSocketListeners = () => {
+  wsService.off('user-data-changed', handleUserChanged)
+  wsService.off('user-points-changed', handleUserPointsChanged)
+  wsService.off('user-coin-changed', handleUserCoinChanged)
+  wsService.off('user-check-in', handleUserCheckIn)
+  wsService.off('user-exchange', handleUserExchange)
+}
+
+const handleUserChanged = (data: any) => {
+  const index = userList.value.findIndex(u => u.id === data.userId)
+  if (index !== -1) {
+    userList.value[index] = { ...userList.value[index], ...data.userData }
+    ElMessage.info(`用户 ${data.userData.username || data.userId} 信息已更新`)
+  }
+}
+
+const handleUserPointsChanged = (data: any) => {
+  const user = userList.value.find(u => u.id === data.userId)
+  if (user) {
+    user.points = data.points
+  }
+}
+
+const handleUserCoinChanged = (data: any) => {
+  const user = userList.value.find(u => u.id === data.userId)
+  if (user) {
+    user.blindBoxCoin = data.coin
+  }
+}
+
+const handleUserCheckIn = (data: any) => {
+  const user = userList.value.find(u => u.id === data.userId)
+  if (user) {
+    user.points = data.total_points
+    user.checkInDays = data.check_in_days
+  }
+}
+
+const handleUserExchange = (data: any) => {
+  loadList()
+}
+
+const editUserAssets = (row: any) => {
+  editAssetsForm.id = row.id
+  editAssetsForm.username = row.username
+  editAssetsForm.points = row.points || 0
+  editAssetsForm.blindBoxCoin = row.blindBoxCoin || 0
+  editAssetsForm.vipLevel = row.vipLevel || 1
+  editAssetsForm.reason = ''
+  editAssetsVisible.value = true
+}
+
+const confirmEditAssets = async () => {
+  if (!editAssetsFormRef.value) return
+  await editAssetsFormRef.value.validate(async (valid: boolean) => {
+    if (!valid) return
+    editAssetsSubmitting.value = true
+    try {
+      await api.put(`/users/${editAssetsForm.id}`, {
+        points: editAssetsForm.points,
+        blind_box_coin: editAssetsForm.blindBoxCoin,
+        vip_level: editAssetsForm.vipLevel
+      })
+      ElMessage.success('用户资产修改成功')
+      editAssetsVisible.value = false
+      loadList()
+    } catch (e: any) {
+      ElMessage.error(e?.message || '修改失败')
+    } finally {
+      editAssetsSubmitting.value = false
+    }
+  })
+}
 </script>
 
 <style scoped>

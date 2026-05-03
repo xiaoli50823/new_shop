@@ -19,31 +19,31 @@
         router
       >
         <el-menu-item index="/admin/dashboard">
-          <el-icon><component :is="'TrendCharts'" /></el-icon>
+          <el-icon><TrendCharts /></el-icon>
           <template #title>数据大盘</template>
         </el-menu-item>
         <el-menu-item index="/admin/blind-box">
-          <el-icon><component :is="'Box'" /></el-icon>
+          <el-icon><Box /></el-icon>
           <template #title>盲盒管理</template>
         </el-menu-item>
         <el-menu-item index="/admin/prizes">
-          <el-icon><component :is="'Present'" /></el-icon>
+          <el-icon><Present /></el-icon>
           <template #title>奖品管理</template>
         </el-menu-item>
         <el-menu-item index="/admin/order">
-          <el-icon><component :is="'List'" /></el-icon>
+          <el-icon><List /></el-icon>
           <template #title>订单管理</template>
         </el-menu-item>
         <el-menu-item index="/admin/user">
-          <el-icon><component :is="'User'" /></el-icon>
+          <el-icon><User /></el-icon>
           <template #title>用户管理</template>
         </el-menu-item>
         <el-menu-item index="/admin/revenue">
-          <el-icon><component :is="'DataAnalysis'" /></el-icon>
+          <el-icon><DataAnalysis /></el-icon>
           <template #title>营收报表</template>
         </el-menu-item>
         <el-menu-item index="/admin/settings">
-          <el-icon><component :is="'Setting'" /></el-icon>
+          <el-icon><Setting /></el-icon>
           <template #title>系统设置</template>
         </el-menu-item>
       </el-menu>
@@ -55,7 +55,8 @@
       <header class="topbar">
         <div class="topbar-left">
           <el-icon class="collapse-btn" @click="toggleSidebar">
-            <component :is="isCollapsed ? 'Expand' : 'Fold'" />
+            <Expand v-if="isCollapsed" />
+            <Fold v-else />
           </el-icon>
           <el-breadcrumb separator="/">
             <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">首页</el-breadcrumb-item>
@@ -203,7 +204,7 @@ const handleCommand = (cmd: string) => {
 
 const submitPassword = async () => {
   if (!passwordFormRef.value) return
-  await passwordFormRef.value.validate((valid) => {
+  await passwordFormRef.value.validate((valid: boolean) => {
     if (valid) {
       ElMessage.success('密码修改成功')
       showPasswordDialog.value = false
@@ -219,12 +220,11 @@ const submitPassword = async () => {
   overflow: hidden;
 }
 
-/* 侧边栏 */
 .sidebar {
   width: 220px;
   min-width: 220px;
   height: 100vh;
-  background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+  background: var(--ink);
   transition: width 0.3s ease, min-width 0.3s ease;
   overflow: hidden;
   display: flex;
@@ -238,19 +238,19 @@ const submitPassword = async () => {
 }
 
 .logo-area {
-  height: 70px;
+  height: 80px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 0 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  gap: 10px;
+  justify-content: flex-start;
+  padding: 0 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  gap: 12px;
   overflow: hidden;
   white-space: nowrap;
 }
 
 .logo-icon {
-  font-size: 28px;
+  font-size: 32px;
   flex-shrink: 0;
 }
 
@@ -259,51 +259,50 @@ const submitPassword = async () => {
 }
 
 .logo-title {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   color: #ffffff;
   line-height: 1.3;
 }
 
 .logo-subtitle {
-  font-size: 9px;
-  color: rgba(255, 255, 255, 0.45);
-  letter-spacing: 2px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 1px;
   text-transform: uppercase;
 }
 
 .sidebar-menu {
   flex: 1;
   border-right: none;
-  padding: 8px 0;
+  padding: 16px 8px;
 }
 
 .sidebar-menu .el-menu-item {
   height: 48px;
   line-height: 48px;
-  margin: 2px 8px;
-  border-radius: 6px;
+  margin: 4px 8px;
+  border-radius: 10px;
   font-size: 14px;
   transition: all 0.25s ease;
 }
 
 .sidebar-menu .el-menu-item:hover {
-  background: rgba(24, 144, 255, 0.15) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
   color: #ffffff !important;
 }
 
 .sidebar-menu .el-menu-item.is-active {
-  background: #1890FF !important;
+  background: var(--ink) !important;
   color: #ffffff !important;
-  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.35);
+  box-shadow: 0 4px 12px rgba(64, 128, 255, 0.4);
 }
 
 .sidebar-menu .el-menu-item .el-icon {
   font-size: 18px;
-  margin-right: 8px;
+  margin-right: 10px;
 }
 
-/* 主区域 */
 .main-wrapper {
   flex: 1;
   display: flex;
@@ -312,73 +311,98 @@ const submitPassword = async () => {
   transition: all 0.3s ease;
 }
 
-/* 顶部栏 */
 .topbar {
-  height: 60px;
-  min-height: 60px;
+  height: 64px;
+  min-height: 64px;
   background: #ffffff;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 24px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   z-index: 99;
 }
 
 .topbar-left {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 20px;
 }
 
 .collapse-btn {
-  font-size: 20px;
+  font-size: 22px;
   cursor: pointer;
-  color: #606266;
+  color: #666666;
   transition: color 0.2s;
 }
 
 .collapse-btn:hover {
-  color: #1890FF;
+  color: #4080FF;
 }
 
 .topbar-right {
   display: flex;
   align-items: center;
+  gap: 20px;
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  background: #F5F7FA;
+  border-radius: 20px;
+  padding: 8px 16px;
+  gap: 10px;
+}
+
+.search-box input {
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 13px;
+  color: #333;
+  width: 180px;
+}
+
+.search-box input::placeholder {
+  color: #999;
+}
+
+.search-box .el-icon {
+  color: #999;
 }
 
 .admin-info {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   cursor: pointer;
-  padding: 4px 12px;
-  border-radius: 6px;
-  transition: background 0.2s;
+  padding: 6px 14px;
+  border-radius: 25px;
+  transition: all 0.2s;
 }
 
 .admin-info:hover {
-  background: #f5f7fa;
+  background: #F5F7FA;
 }
 
 .admin-avatar {
-  background: #1890FF;
+  background: var(--ink);
   color: #fff;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
 }
 
 .admin-name {
   font-size: 14px;
-  color: #303133;
+  color: #333333;
 }
 
-/* 内容区 */
 .content-area {
   flex: 1;
-  padding: 24px;
+  padding: 20px;
   overflow-y: auto;
-  background: #F0F2F5;
+  background: #F5F7FA;
 }
 
 .content-area::-webkit-scrollbar {
@@ -386,7 +410,7 @@ const submitPassword = async () => {
 }
 
 .content-area::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: #CCCCCC;
   border-radius: 3px;
 }
 
@@ -394,7 +418,6 @@ const submitPassword = async () => {
   background: transparent;
 }
 
-/* 路由切换动画 */
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.2s ease;

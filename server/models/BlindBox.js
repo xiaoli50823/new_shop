@@ -43,6 +43,16 @@ const BlindBox = sequelize.define('BlindBox', {
     type: DataTypes.DATE,
     allowNull: true
   },
+  category: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+    comment: '分类: anime-动漫, game-游戏, figure-潮玩, movie-影视, designer-设计师, holiday-节日'
+  },
+  original_price: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    comment: '原价'
+  },
   stock: {
     type: DataTypes.INTEGER,
     defaultValue: 0

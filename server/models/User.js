@@ -93,12 +93,28 @@ User.prototype.comparePassword = async function (password) {
 };
 
 /**
- * 序列化时隐藏密码
+ * 序列化时隐藏密码并转换字段名
  */
 User.prototype.toJSON = function () {
   const values = { ...this.get() };
   delete values.password;
-  return values;
+  
+  return {
+    id: values.id,
+    username: values.username,
+    email: values.email,
+    phone: values.phone,
+    avatar: values.avatar,
+    vipLevel: values.vip_level,
+    points: values.points,
+    blindBoxCoin: parseFloat(values.blind_box_coin) || 0,
+    checkInDays: values.check_in_days,
+    lastCheckIn: values.last_check_in,
+    role: values.role,
+    status: values.status,
+    createdAt: values.created_at,
+    updatedAt: values.updated_at
+  };
 };
 
 module.exports = User;

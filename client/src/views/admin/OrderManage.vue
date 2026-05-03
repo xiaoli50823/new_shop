@@ -12,13 +12,13 @@
         >
           <template #prefix><el-icon><Search /></el-icon></template>
         </el-input>
-        <el-select v-model="filterType" placeholder="订单类型" clearable style="width: 140px">
+        <el-select v-model="filterType" placeholder="订单类型" clearable style="width: 140px" @change="handleSearch">
           <el-option label="全部" value="" />
           <el-option label="购买" value="purchase" />
           <el-option label="发货" value="shipment" />
           <el-option label="抽盒" value="draw" />
         </el-select>
-        <el-select v-model="filterStatus" placeholder="订单状态" clearable style="width: 140px">
+        <el-select v-model="filterStatus" placeholder="订单状态" clearable style="width: 140px" @change="handleSearch">
           <el-option label="全部" value="" />
           <el-option label="待支付" value="pending" />
           <el-option label="已支付" value="paid" />
@@ -33,6 +33,7 @@
           start-placeholder="开始日期"
           end-placeholder="结束日期"
           style="width: 260px"
+          @change="handleSearch"
         />
         <el-button @click="resetFilter">重置</el-button>
         <div class="filter-right">
@@ -277,7 +278,7 @@ const viewDetail = (row: any) => {
 
 const markPaid = async (row: any) => {
   try {
-    await api.put(`/orders/${row._id || row.id}`, { status: 'paid' })
+    await api.put(`/orders/${row.id}/status`, { status: 'paid' })
     row.status = 'paid'
     ElMessage.success('已标记为已支付')
   } catch (e: any) {
@@ -286,7 +287,7 @@ const markPaid = async (row: any) => {
 }
 
 const openShipDialog = (row: any) => {
-  shipForm.orderId = row._id || row.id
+  shipForm.orderId = row.id
   shipForm.orderNo = row.orderNo
   shipForm.expressCompany = ''
   shipForm.trackingNo = ''
@@ -295,12 +296,11 @@ const openShipDialog = (row: any) => {
 
 const confirmShip = async () => {
   if (!shipFormRef.value) return
-  await shipFormRef.value.validate(async (valid) => {
+  await shipFormRef.value.validate(async (valid: boolean) => {
     if (!valid) return
     shipSubmitting.value = true
     try {
-      await api.put(`/orders/${shipForm.orderId}`, {
-        status: 'shipping',
+      await api.put(`/orders/${shipForm.orderId}/ship`, {
         expressCompany: shipForm.expressCompany,
         trackingNo: shipForm.trackingNo
       })
@@ -317,7 +317,7 @@ const confirmShip = async () => {
 
 const cancelOrder = async (row: any) => {
   try {
-    await api.put(`/orders/${row._id || row.id}`, { status: 'cancelled' })
+    await api.put(`/orders/${row.id}/status`, { status: 'cancelled' })
     row.status = 'cancelled'
     ElMessage.success('订单已取消')
   } catch (e: any) {
@@ -341,11 +341,7 @@ const loadList = async () => {
     }
     const res: any = await api.get('/orders', { params })
     const data = res?.data || res || {}
-    orderList.value = (data.list || data || []).map((o: any) => ({
-      ...o,
-      id: o._id || o.id,
-      summary: (o.items || []).map((i: any) => `${i.name}×${i.quantity}`).join('、') || o.summary || '-'
-    }))
+    orderList.value = data.list || []
     totalCount.value = data.total || orderList.value.length
   } catch {
     orderList.value = []

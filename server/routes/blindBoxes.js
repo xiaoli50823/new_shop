@@ -3,7 +3,7 @@
  */
 const express = require('express');
 const { Op } = require('sequelize');
-const { BlindBox, Prize, User, UserCabinet, DrawRecord, sequelize } = require('../models');
+const { BlindBox, Prize, User, UserCabinet, DrawRecord, Order, sequelize } = require('../models');
 const { auth, adminOnly } = require('../middleware/auth');
 const { createBlindBoxRules, drawRules, paginationRules, idParamRules } = require('../middleware/validate');
 const { drawAntiBrush } = require('../middleware/antiBrush');
@@ -12,23 +12,227 @@ const { batchDraw } = require('../utils/drawAlgorithm');
 const router = express.Router();
 
 /**
+ * 获取热门盲盒
+ * GET /api/blind-boxes/hot
+ */
+router.get('/hot', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 6;
+    
+    const hotBoxes = await BlindBox.findAll({
+      where: { status: 'active' },
+      include: [{
+        model: Prize,
+        as: 'prizes',
+        attributes: ['id', 'name', 'rarity']
+      }],
+      order: [['total_draws', 'DESC']],
+      limit
+    });
+
+    const result = hotBoxes.map(box => ({
+      id: box.id,
+      name: box.name,
+      price: parseFloat(box.price),
+      originalPrice: box.original_price ? parseFloat(box.original_price) : null,
+      image: box.image,
+      coverImage: box.cover_image || box.image || null,
+      tag: box.tag || null,
+      tagText: box.tag_text || null,
+      sales: box.total_draws,
+      category: box.category,
+      description: box.description
+    }));
+
+    res.json({
+      code: 200,
+      data: result,
+      message: 'success'
+    });
+  } catch (err) {
+    console.error('获取热门盲盒失败:', err);
+    res.status(500).json({ code: 500, message: '服务器内部错误' });
+  }
+});
+
+/**
+ * 获取无限盲盒
+ * GET /api/blind-boxes/infinite
+ */
+router.get('/infinite', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 20;
+    const { category } = req.query;
+    
+    const where = { status: 'active', type: 'infinite' };
+    if (category && category !== 'all') {
+      where.category = category;
+    }
+
+    const boxes = await BlindBox.findAll({
+      where,
+      include: [{
+        model: Prize,
+        as: 'prizes',
+        attributes: ['id', 'name', 'rarity']
+      }],
+      order: [['total_draws', 'DESC']],
+      limit
+    });
+
+    const result = boxes.map(box => ({
+      id: box.id,
+      name: box.name,
+      price: parseFloat(box.price),
+      originalPrice: box.original_price ? parseFloat(box.original_price) : null,
+      image: box.image,
+      coverImage: box.cover_image || box.image || null,
+      tag: box.tag || null,
+      tagText: box.tag_text || null,
+      sales: box.total_draws,
+      category: box.category,
+      description: box.description,
+      stock: box.stock
+    }));
+
+    res.json({
+      code: 200,
+      data: result,
+      message: 'success'
+    });
+  } catch (err) {
+    console.error('获取无限盲盒失败:', err);
+    res.status(500).json({ code: 500, message: '服务器内部错误' });
+  }
+});
+
+/**
+ * 获取新品盲盒
+ * GET /api/blind-boxes/new
+ */
+router.get('/new', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 20;
+    const { category } = req.query;
+    
+    const where = { status: 'active', tag: 'new' };
+    if (category && category !== 'all') {
+      where.category = category;
+    }
+
+    const boxes = await BlindBox.findAll({
+      where,
+      include: [{
+        model: Prize,
+        as: 'prizes',
+        attributes: ['id', 'name', 'rarity']
+      }],
+      order: [['created_at', 'DESC']],
+      limit
+    });
+
+    const result = boxes.map(box => ({
+      id: box.id,
+      name: box.name,
+      price: parseFloat(box.price),
+      originalPrice: box.original_price ? parseFloat(box.original_price) : null,
+      image: box.image,
+      coverImage: box.cover_image || box.image || null,
+      tag: box.tag || null,
+      tagText: box.tag_text || null,
+      sales: box.total_draws,
+      category: box.category,
+      description: box.description,
+      stock: box.stock,
+      type: box.type
+    }));
+
+    res.json({
+      code: 200,
+      data: result,
+      message: 'success'
+    });
+  } catch (err) {
+    console.error('获取新品盲盒失败:', err);
+    res.status(500).json({ code: 500, message: '服务器内部错误' });
+  }
+});
+
+/**
+ * 获取分类盲盒
+ * GET /api/blind-boxes/category/:category
+ */
+router.get('/category/:category', async (req, res) => {
+  try {
+    const { category } = req.params;
+    const limit = parseInt(req.query.limit) || 12;
+    
+    const where = { status: 'active' };
+    if (category && category !== 'all') {
+      where.category = category;
+    }
+
+    const boxes = await BlindBox.findAll({
+      where,
+      include: [{
+        model: Prize,
+        as: 'prizes',
+        attributes: ['id', 'name', 'rarity']
+      }],
+      order: [['id', 'DESC']],
+      limit
+    });
+
+    const result = boxes.map(box => ({
+      id: box.id,
+      name: box.name,
+      price: parseFloat(box.price),
+      originalPrice: box.original_price ? parseFloat(box.original_price) : null,
+      image: box.image,
+      coverImage: box.cover_image || box.image || null,
+      tag: box.tag || null,
+      tagText: box.tag_text || null,
+      sales: box.total_draws,
+      category: box.category,
+      description: box.description,
+      stock: box.stock
+    }));
+
+    res.json({
+      code: 200,
+      data: result,
+      message: 'success'
+    });
+  } catch (err) {
+    console.error('获取分类盲盒失败:', err);
+    res.status(500).json({ code: 500, message: '服务器内部错误' });
+  }
+});
+
+/**
  * 获取盲盒列表（支持分页、筛选类型、搜索）
  */
 router.get('/', paginationRules, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const pageSize = parseInt(req.query.pageSize) || 20;
-    const { type, status, search } = req.query;
+    const { type, status, keyword, category, tag } = req.query;
 
     const where = {};
     if (type) where.type = type;
     if (status) {
       where.status = status;
     } else {
-      where.status = 'active'; // 默认只显示上架的
+      where.status = 'active';
     }
-    if (search) {
-      where.name = { [Op.like]: `%${search}%` };
+    if (keyword) {
+      where.name = { [Op.like]: `%${keyword}%` };
+    }
+    if (category && category !== 'all') {
+      where.category = category;
+    }
+    if (tag) {
+      where.tag = tag;
     }
 
     const { rows, count } = await BlindBox.findAndCountAll({
@@ -74,7 +278,10 @@ router.get('/:id', idParamRules, async (req, res) => {
 router.post('/', auth, adminOnly, createBlindBoxRules, async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const { prizes, ...boxData } = req.body;
+    const { prizes, coverUrl, saleTime, ...otherData } = req.body;
+    const boxData = { ...otherData };
+    if (coverUrl !== undefined) boxData.cover_image = coverUrl;
+    if (saleTime !== undefined) boxData.sale_time = saleTime;
     const blindBox = await BlindBox.create(boxData, { transaction: t });
 
     // 创建关联奖品
@@ -93,7 +300,7 @@ router.post('/', auth, adminOnly, createBlindBoxRules, async (req, res) => {
       include: [{ model: Prize, as: 'prizes' }]
     });
 
-    res.status(201).json({ code: 201, data: result, message: '创建成功' });
+    res.status(201).json({ code: 200, data: result, message: '创建成功' });
   } catch (err) {
     await t.rollback();
     console.error('创建盲盒失败:', err);
@@ -113,7 +320,10 @@ router.put('/:id', auth, adminOnly, idParamRules, async (req, res) => {
       return res.status(404).json({ code: 404, message: '盲盒不存在' });
     }
 
-    const { prizes, ...boxData } = req.body;
+    const { prizes, coverUrl, saleTime, ...otherData } = req.body;
+    const boxData = { ...otherData };
+    if (coverUrl !== undefined) boxData.cover_image = coverUrl;
+    if (saleTime !== undefined) boxData.sale_time = saleTime;
     await blindBox.update(boxData, { transaction: t });
 
     // 如果传了奖品数据，全量替换
@@ -210,6 +420,16 @@ router.post('/:id/draw', auth, drawAntiBrush(), drawRules, async (req, res) => {
       blind_box_coin: parseFloat(user.blind_box_coin) - totalCost
     }, { transaction: t });
 
+    // 生成订单号
+    const orderNo = 'BB' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 6).toUpperCase();
+    const order = await Order.create({
+      order_no: orderNo,
+      user_id: userId,
+      type: 'draw',
+      status: 'paid',
+      total: totalCost
+    }, { transaction: t });
+
     // 转换奖品数据格式给算法使用
     const prizeDataForDraw = prizes.map(p => ({
       id: p.id,
@@ -254,7 +474,8 @@ router.post('/:id/draw', auth, drawAntiBrush(), drawRules, async (req, res) => {
         prize_name: drawnPrize.name,
         prize_rarity: drawnPrize.rarity,
         draw_type: drawType,
-        cost: totalCost / count
+        cost: totalCost / count,
+        order_id: order.id
       }, { transaction: t });
 
       results.push({
@@ -276,7 +497,8 @@ router.post('/:id/draw', auth, drawAntiBrush(), drawRules, async (req, res) => {
         results,
         cost: totalCost,
         remaining_coin: parseFloat(user.blind_box_coin) - totalCost,
-        draw_type: drawType
+        draw_type: drawType,
+        order_no: orderNo
       },
       message: '抽盒成功'
     });

@@ -31,32 +31,69 @@ router.get('/', auth, adminOnly, paginationRules, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const pageSize = parseInt(req.query.pageSize) || 20;
-    const { status, type, keyword } = req.query;
+    const { status, type, keyword, startDate, endDate } = req.query;
 
     const where = {};
     if (status) where.status = status;
     if (type) where.type = type;
+
+    if (startDate && endDate) {
+      where.created_at = {
+        [Op.between]: [new Date(startDate), new Date(endDate)]
+      };
+    }
+
     if (keyword) {
       where[Op.or] = [
         { order_no: { [Op.like]: `%${keyword}%` } },
-        { shipping_contact: { [Op.like]: `%${keyword}%` } }
+        { shipping_contact: { [Op.like]: `%${keyword}%` } },
+        { '$user.username$': { [Op.like]: `%${keyword}%` } }
       ];
     }
 
     const { rows, count } = await Order.findAndCountAll({
       where,
       include: [
-        { model: User, as: 'user', attributes: ['id', 'username', 'email'] },
+        { model: User, as: 'user', attributes: ['id', 'username', 'email'], required: false },
         { model: OrderItem, as: 'items' }
       ],
       limit: pageSize,
       offset: (page - 1) * pageSize,
-      order: [['id', 'DESC']]
+      order: [['id', 'DESC']],
+      subQuery: false
     });
 
     res.json({
       code: 200,
-      data: { list: rows, total: count, page, pageSize },
+      data: {
+        list: rows.map(order => ({
+          id: order.id,
+          orderNo: order.order_no,
+          username: order.user ? order.user.username : '未知用户',
+          userEmail: order.user ? order.user.email : '',
+          type: order.type,
+          status: order.status,
+          amount: parseFloat(order.total) || 0,
+          summary: order.items ? order.items.map(i => `${i.name || i.blind_box_name}×${i.quantity}`).join(' 、') : '',
+          items: order.items ? order.items.map(i => ({
+            name: i.name || i.blind_box_name,
+            quantity: i.quantity || 1,
+            price: parseFloat(i.price) || 0
+          })) : [],
+          createdAt: order.created_at,
+          shippingInfo: order.shipping_address ? {
+            address: order.shipping_address,
+            contact: order.shipping_contact,
+            phone: order.shipping_phone
+          } : null,
+          expressCompany: order.express_company || null,
+          trackingNo: order.tracking_number || null,
+          _raw: order
+        })),
+        total: count,
+        page,
+        pageSize
+      },
       message: 'success'
     });
   } catch (err) {
@@ -130,7 +167,7 @@ router.post('/', auth, createOrderRules, async (req, res) => {
       include: [{ model: OrderItem, as: 'items' }]
     });
 
-    res.status(201).json({ code: 201, data: result, message: '订单创建成功' });
+    res.status(201).json({ code: 200, data: result, message: '订单创建成功' });
   } catch (err) {
     await t.rollback();
     console.error('创建订单失败:', err);
@@ -182,7 +219,8 @@ router.put('/:id/ship', auth, idParamRules, async (req, res) => {
       return res.status(400).json({ code: 400, message: '只有已支付的订单才能发货' });
     }
 
-    const { tracking_number, express_company } = req.body;
+    const tracking_number = req.body.tracking_number || req.body.trackingNo || '';
+    const express_company = req.body.express_company || req.body.expressCompany || '';
     await order.update({
       tracking_number,
       express_company,

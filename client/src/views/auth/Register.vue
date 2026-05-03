@@ -40,7 +40,8 @@
               autocomplete="new-password"
             />
             <el-icon class="eye-icon" @click="showPassword = !showPassword">
-              <component :is="showPassword ? 'View' : 'Hide'" />
+              <View v-if="showPassword" />
+              <Hide v-else />
             </el-icon>
           </div>
         </div>

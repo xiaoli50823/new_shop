@@ -26,14 +26,12 @@ const trueRandomDraw = (prizes) => {
  * @returns {Object} 抽中的奖品
  */
 const pseudoRandomDraw = (prizes) => {
-  // 过滤出有库存的奖品
   const availablePrizes = prizes.filter(prize => prize.stock > 0);
   
   if (availablePrizes.length === 0) {
-    return null;
+    return trueRandomDraw(prizes);
   }
   
-  // 计算总权重
   const totalWeight = availablePrizes.reduce((sum, prize) => sum + prize.probability, 0);
   const random = Math.random() * totalWeight;
   
@@ -41,13 +39,11 @@ const pseudoRandomDraw = (prizes) => {
   for (const prize of availablePrizes) {
     cumulativeWeight += prize.probability;
     if (random <= cumulativeWeight) {
-      // 减少库存
       prize.stock--;
       return prize;
     }
   }
   
-  // 兜底返回第一个奖品
   availablePrizes[0].stock--;
   return availablePrizes[0];
 };

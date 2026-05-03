@@ -38,7 +38,7 @@
     <!-- 热门搜索 -->
     <div v-if="!keyword" class="hot-section">
       <div class="section-header">
-        <h4>🔥 热门搜索</h4>
+        <h4>热门搜索</h4>
       </div>
       <div class="hot-tags">
         <span

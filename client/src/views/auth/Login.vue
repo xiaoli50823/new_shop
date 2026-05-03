@@ -3,7 +3,7 @@
     <div class="login-container">
       <!-- Logo -->
       <div class="logo-section">
-        <div class="logo-icon">🎁</div>
+        <div class="logo-icon">BLIND BOX PLANET</div>
         <h1 class="logo-title">盲盒星球</h1>
         <p class="logo-subtitle">开启你的惊喜之旅</p>
       </div>
@@ -31,7 +31,8 @@
               autocomplete="current-password"
             />
             <el-icon class="eye-icon" @click="showPassword = !showPassword">
-              <component :is="showPassword ? 'View' : 'Hide'" />
+              <View v-if="showPassword" />
+              <Hide v-else />
             </el-icon>
           </div>
         </div>
@@ -110,7 +111,7 @@ const thirdPartyLogin = (type: string) => {
 <style scoped>
 .login-page {
   min-height: 100vh;
-  background: var(--primary-gradient);
+  background: var(--ink);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -129,14 +130,11 @@ const thirdPartyLogin = (type: string) => {
 }
 
 .logo-icon {
-  font-size: 60px;
-  margin-bottom: 10px;
-  animation: bounce 2s infinite;
-}
-
-@keyframes bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 12px;
 }
 
 .logo-title {
@@ -175,9 +173,9 @@ const thirdPartyLogin = (type: string) => {
 }
 
 .input-wrapper:focus-within {
-  border-color: var(--primary-pink);
+  border-color: var(--ink);
   background: #FFFFFF;
-  box-shadow: 0 0 0 3px rgba(255, 107, 157, 0.1);
+  box-shadow: 0 0 0 3px rgba(58, 80, 104, 0.1);
 }
 
 .input-wrapper .el-icon {
@@ -207,7 +205,7 @@ const thirdPartyLogin = (type: string) => {
 .login-btn {
   width: 100%;
   padding: 14px;
-  background: var(--primary-gradient);
+  background: var(--ink);
   color: #FFFFFF;
   border: none;
   border-radius: 12px;
@@ -221,6 +219,10 @@ const thirdPartyLogin = (type: string) => {
   align-items: center;
   justify-content: center;
   gap: 8px;
+}
+
+.login-btn:hover {
+  opacity: 0.85;
 }
 
 .login-btn:active {
@@ -255,7 +257,7 @@ const thirdPartyLogin = (type: string) => {
 }
 
 .form-footer b {
-  color: var(--primary-pink);
+  color: var(--ink);
 }
 
 /* 第三方登录 */

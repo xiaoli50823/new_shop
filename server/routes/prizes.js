@@ -56,8 +56,14 @@ router.put('/:id', auth, adminOnly, async (req, res) => {
   try {
     const prize = await Prize.findByPk(req.params.id);
     if (!prize) return res.status(404).json({ code: 404, message: '奖品不存在' });
-    await prize.update(req.body);
-    res.json({ code: 200, data: prize, message: '更新成功' });
+    const updateData = { ...req.body };
+    if (updateData.blindBoxId !== undefined) {
+      updateData.blind_box_id = updateData.blindBoxId;
+      delete updateData.blindBoxId;
+    }
+    await prize.update(updateData);
+    const updated = await Prize.findByPk(req.params.id, { include: [{ model: BlindBox, as: 'blindBox', attributes: ['id', 'name'] }] });
+    res.json({ code: 200, data: updated, message: '更新成功' });
   } catch (err) {
     res.status(400).json({ code: 400, message: err.message });
   }

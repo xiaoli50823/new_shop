@@ -2,7 +2,7 @@
   <div class="cabinet-page">
     <!-- 顶部统计 -->
     <div class="cabinet-header">
-      <h2>📦 我的盒柜</h2>
+      <h2>我的盒柜</h2>
       <span class="total-count">共 {{ totalCount }} 件商品</span>
     </div>
 
@@ -99,7 +99,7 @@
           </div>
         </div>
         <div class="shipping-info" v-if="selectedAddressId">
-          <p>邮费：{{ shipItems.length >= 3 ? '满3件包邮 🎉' : '¥10.00' }}</p>
+          <p>邮费：{{ shipItems.length >= 3 ? '满3件包邮' : '¥10.00' }}</p>
         </div>
       </div>
       <template #footer>
@@ -317,7 +317,7 @@ onMounted(() => {
 <style scoped>
 .cabinet-page {
   min-height: 100vh;
-  background: var(--bg-pink);
+  background: var(--beige);
   padding-bottom: 80px;
 }
 
@@ -326,12 +326,14 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 16px;
-  background: linear-gradient(180deg, #FFE4EE 0%, var(--bg-pink) 100%);
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
 }
 
 .cabinet-header h2 {
   font-size: 20px;
   font-weight: 700;
+  color: var(--text-primary);
 }
 
 .total-count {
@@ -344,7 +346,7 @@ onMounted(() => {
   display: flex;
   padding: 0 16px 12px;
   gap: 0;
-  background: var(--bg-pink);
+  background: var(--beige);
 }
 
 .cabinet-tabs .tab-item {
@@ -359,9 +361,9 @@ onMounted(() => {
 }
 
 .cabinet-tabs .tab-item.active {
-  color: var(--primary-pink);
+  color: var(--ink);
   font-weight: 600;
-  border-bottom-color: var(--primary-pink);
+  border-bottom-color: var(--ink);
 }
 
 .tab-count {
@@ -383,7 +385,7 @@ onMounted(() => {
   background: #FFFFFF;
   border-radius: var(--radius-card);
   margin-bottom: 10px;
-  box-shadow: var(--shadow-card);
+  border: 1px solid var(--border);
 }
 
 .item-checkbox {
@@ -462,7 +464,7 @@ onMounted(() => {
 }
 
 .shipping-no {
-  color: var(--primary-pink);
+  color: var(--ink);
   font-weight: 500;
 }
 
@@ -497,7 +499,7 @@ onMounted(() => {
 
 .selected-count {
   font-size: 12px;
-  color: var(--primary-pink);
+  color: var(--ink);
 }
 
 .batch-right {
@@ -532,15 +534,15 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
   padding: 14px;
-  border: 2px solid var(--border-color);
+  border: 2px solid var(--border);
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .address-item.selected {
-  border-color: var(--primary-pink);
-  background: #FFF5F7;
+  border-color: var(--ink);
+  background: var(--ink-subtle);
 }
 
 .address-info {
@@ -569,14 +571,14 @@ onMounted(() => {
 }
 
 .check-icon {
-  color: var(--primary-pink);
+  color: var(--ink);
   font-size: 22px;
 }
 
 .shipping-info {
   margin-top: 12px;
   padding: 10px;
-  background: #FFF5F7;
+  background: var(--ink-subtle);
   border-radius: 8px;
   font-size: 13px;
   color: var(--text-secondary);
@@ -607,7 +609,7 @@ onMounted(() => {
   align-items: center;
   gap: 4px;
   padding: 10px;
-  background: #FFF5F7;
+  background: var(--ink-subtle);
   border-radius: 12px;
   width: 90px;
 }

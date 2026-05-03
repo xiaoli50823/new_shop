@@ -411,7 +411,7 @@ onMounted(() => {
 .bar {
   width: 60%;
   max-width: 60px;
-  background: linear-gradient(180deg, #1890FF 0%, #69c0ff 100%);
+  background: var(--ink);
   border-radius: 4px 4px 0 0;
   transition: height 0.6s ease;
   display: flex;

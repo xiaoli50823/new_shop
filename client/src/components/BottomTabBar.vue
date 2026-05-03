@@ -7,12 +7,9 @@
       :class="{ active: isActive(tab.path) }"
       @click="switchTab(tab.path)"
     >
-      <div class="tab-icon-wrapper">
-        <el-icon :size="24">
-          <component :is="tab.icon" />
-        </el-icon>
-        <span v-if="tab.badge && tab.badge > 0" class="badge">{{ tab.badge > 99 ? '99+' : tab.badge }}</span>
-      </div>
+      <el-icon :size="22">
+        <component :is="tab.icon" />
+      </el-icon>
       <span class="tab-label">{{ tab.label }}</span>
     </div>
   </div>
@@ -22,17 +19,15 @@
 import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { HomeFilled, Compass, Box, User } from '@element-plus/icons-vue'
-import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
 const route = useRoute()
-const userStore = useUserStore()
 
 const tabs = computed(() => [
-  { path: '/', label: '首页', icon: HomeFilled, badge: 0 },
-  { path: '/discover', label: '发现', icon: Compass, badge: 0 },
-  { path: '/box-cabinet', label: '盒柜', icon: Box, badge: 0 },
-  { path: '/personal', label: '我的', icon: User, badge: 0 }
+  { path: '/', label: '首页', icon: HomeFilled },
+  { path: '/discover', label: '发现', icon: Compass },
+  { path: '/box-cabinet', label: '盒柜', icon: Box },
+  { path: '/personal', label: '我的', icon: User }
 ])
 
 const isActive = (path: string) => {
@@ -55,14 +50,13 @@ const switchTab = (path: string) => {
   transform: translateX(-50%);
   width: 100%;
   max-width: 750px;
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: space-around;
   height: 56px;
-  background: #FFFFFF;
-  border-top: 1px solid var(--border-color);
+  background: var(--white);
+  border-top: 1px solid var(--border);
   z-index: 999;
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
 }
 
 .tab-item {
@@ -73,56 +67,28 @@ const switchTab = (path: string) => {
   flex: 1;
   height: 100%;
   cursor: pointer;
-  transition: all 0.2s ease;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.tab-item:active {
-  transform: scale(0.92);
-}
-
-.tab-icon-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 2px;
-}
-
-.tab-item .el-icon {
+  transition: color 0.2s;
   color: var(--text-light);
-  transition: color 0.2s ease;
 }
 
-.tab-item.active .el-icon {
-  color: var(--primary-pink);
+.tab-item.active {
+  color: var(--ink);
 }
 
 .tab-label {
   font-size: 10px;
-  color: var(--text-light);
-  transition: color 0.2s ease;
+  margin-top: 2px;
   font-weight: 400;
+  letter-spacing: 0.3px;
 }
 
 .tab-item.active .tab-label {
-  color: var(--primary-pink);
   font-weight: 500;
 }
 
-.badge {
-  position: absolute;
-  top: -4px;
-  right: -8px;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  font-size: 10px;
-  line-height: 16px;
-  text-align: center;
-  color: #FFFFFF;
-  background: var(--danger);
-  border-radius: 8px;
-  font-weight: 500;
+@media (max-width: 1200px) {
+  .tab-bar {
+    display: flex;
+  }
 }
 </style>

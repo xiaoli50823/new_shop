@@ -57,7 +57,7 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { userAPI } from '../services/api'
+import { authAPI } from '../services/api'
 
 const router = useRouter()
 const loading = ref(false)
@@ -124,15 +124,22 @@ const handleLogin = async () => {
       if (valid) {
         loading.value = true
         try {
-          const response = await userAPI.login(loginForm)
+          const response = await authAPI.login(loginForm)
           const { user, token } = response
           
-          // 存储token和用户信息
           localStorage.setItem('token', token)
           localStorage.setItem('user', JSON.stringify(user))
           
           ElMessage.success('登录成功')
-          router.push('/')
+          
+          const redirect = router.currentRoute.value.query.redirect as string
+          if (redirect) {
+            router.push(redirect)
+          } else if (user.role === 'admin') {
+            router.push('/admin')
+          } else {
+            router.push('/')
+          }
         } catch (error: any) {
           ElMessage.error(error.response?.data?.message || '登录失败，请重试')
         } finally {
@@ -149,10 +156,9 @@ const handleRegister = async () => {
       if (valid) {
         loading.value = true
         try {
-          const response = await userAPI.register(registerForm)
+          const response = await authAPI.register(registerForm)
           const { user, token } = response
           
-          // 存储token和用户信息
           localStorage.setItem('token', token)
           localStorage.setItem('user', JSON.stringify(user))
           
@@ -175,7 +181,7 @@ const handleRegister = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
+  background: var(--beige);
   padding: 20px;
 }
 
@@ -206,9 +212,7 @@ const handleRegister = async () => {
   font-size: 32px;
   font-weight: 900;
   letter-spacing: 2px;
-  background: linear-gradient(90deg, #00d2ff 0%, #3a7bd5 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--ink);
   margin: 0 0 10px 0;
   line-height: 1.2;
 }
@@ -256,7 +260,7 @@ const handleRegister = async () => {
   height: 48px;
   font-size: 16px;
   font-weight: 500;
-  background: linear-gradient(90deg, #00d2ff 0%, #3a7bd5 100%);
+  background: var(--ink);
   border: none;
   border-radius: 24px;
   transition: all 0.3s ease;

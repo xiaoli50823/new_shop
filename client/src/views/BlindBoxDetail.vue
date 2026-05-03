@@ -36,7 +36,7 @@
     <!-- 奖池展示 -->
     <div class="prize-pool-section">
       <div class="section-header">
-        <h3>🏆 奖池展示</h3>
+        <h3>奖池展示</h3>
         <span class="prize-count">共 {{ prizePool.length }} 件</span>
       </div>
       <div class="prize-pool-scroll hide-scrollbar">
@@ -56,7 +56,7 @@
     <!-- 道具区 -->
     <div class="props-section" v-if="propsList.length > 0">
       <div class="section-header">
-        <h3>🎴 道具</h3>
+        <h3>道具</h3>
       </div>
       <div class="props-list">
         <div v-for="prop in propsList" :key="prop.id" class="prop-item">
@@ -221,7 +221,7 @@ const fetchDetail = async () => {
     const id = route.params.id as string
     const res = await blindBoxAPI.getById(id)
     const data = res.data || res
-    detail.value = data
+    detail.value = { ...data, coverImage: data.cover_image || data.coverImage || data.image }
     prizePool.value = data.prizes || data.items || data.pool || []
     propsList.value = data.props || data.tools || []
   } catch {
@@ -521,17 +521,17 @@ onMounted(() => {
 }
 
 .single {
-  background: linear-gradient(135deg, #FF6B9D, #FF8E53);
+  background: var(--ink);
   color: #FFFFFF;
 }
 
 .multi5 {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: var(--ink);
   color: #FFFFFF;
 }
 
 .multi10 {
-  background: linear-gradient(135deg, #FFD700, #FFA502);
+  background: var(--charcoal);
   color: #FFFFFF;
 }
 

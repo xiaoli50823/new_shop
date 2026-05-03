@@ -24,7 +24,7 @@ const Prize = sequelize.define('Prize', {
     allowNull: true
   },
   rarity: {
-    type: DataTypes.ENUM('common', 'rare', 'hidden'),
+    type: DataTypes.ENUM('common', 'rare', 'super_rare', 'hidden'),
     defaultValue: 'common'
   },
   probability: {

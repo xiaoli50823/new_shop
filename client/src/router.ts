@@ -26,6 +26,30 @@ const routes: RouteRecordRaw[] = [
     meta: { showTabBar: true, title: '我的', requiresAuth: true }
   },
   {
+    path: '/points-mall',
+    name: 'PointsMall',
+    component: () => import('@/views/PointsMall.vue'),
+    meta: { title: '积分商城' }
+  },
+  {
+    path: '/hot',
+    name: 'HotProducts',
+    component: () => import('@/views/HotProducts.vue'),
+    meta: { title: '热门周边' }
+  },
+  {
+    path: '/infinite',
+    name: 'InfiniteBlindBox',
+    component: () => import('@/views/InfiniteBlindBox.vue'),
+    meta: { title: '无限盲盒' }
+  },
+  {
+    path: '/new',
+    name: 'NewProducts',
+    component: () => import('@/views/NewProducts.vue'),
+    meta: { title: '新品上线' }
+  },
+  {
     path: '/blind-box/:id',
     name: 'BlindBoxDetail',
     component: () => import('@/views/BlindBoxDetail.vue'),
@@ -48,6 +72,18 @@ const routes: RouteRecordRaw[] = [
     name: 'Search',
     component: () => import('@/views/Search.vue'),
     meta: { title: '搜索' }
+  },
+  {
+    path: '/cart',
+    name: 'Cart',
+    component: () => import('@/views/Cart.vue'),
+    meta: { title: '购物车', requiresAuth: true }
+  },
+  {
+    path: '/check-in',
+    name: 'CheckIn',
+    component: () => import('@/views/CheckIn.vue'),
+    meta: { title: '每日签到', requiresAuth: true }
   },
   {
     path: '/order/:id',

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { authAPI, userAPI } from '@/services/api'
+import { wsService } from '@/services/websocket'
 import router from '@/router'
 import { ElMessage } from 'element-plus'
 
@@ -10,7 +11,7 @@ interface UserInfo {
   email: string
   phone?: string
   avatar?: string
-  coins?: number
+  blindBoxCoin?: number
   points?: number
   vipLevel?: number
   vipExp?: number
@@ -19,6 +20,7 @@ interface UserInfo {
   checkInDays?: number
   isCheckedIn?: boolean
   inviteCode?: string
+  role?: string
 }
 
 export const useUserStore = defineStore('user', () => {
@@ -30,7 +32,7 @@ export const useUserStore = defineStore('user', () => {
   const isLoggedIn = computed(() => !!token.value)
   const username = computed(() => userInfo.value?.username || '游客')
   const avatar = computed(() => userInfo.value?.avatar || '')
-  const coins = computed(() => userInfo.value?.coins || 0)
+  const coins = computed(() => userInfo.value?.blindBoxCoin || 0)
   const points = computed(() => userInfo.value?.points || 0)
   const vipLevel = computed(() => userInfo.value?.vipLevel || 0)
 
@@ -42,11 +44,19 @@ export const useUserStore = defineStore('user', () => {
       token.value = data.token || ''
       localStorage.setItem('token', token.value)
       await fetchUserInfo()
+      initWebSocket()
       ElMessage.success('登录成功')
-      router.push('/')
+      
+      const redirect = router.currentRoute.value.query.redirect as string
+      if (redirect) {
+        router.push(redirect)
+      } else if (userInfo.value?.role === 'admin') {
+        router.push('/admin')
+      } else {
+        router.push('/')
+      }
       return true
     } catch (error: any) {
-      // Error already handled by interceptor
       return false
     }
   }
@@ -81,6 +91,7 @@ export const useUserStore = defineStore('user', () => {
   }
 
   function logout() {
+    wsService.disconnect()
     token.value = ''
     userInfo.value = null
     localStorage.removeItem('token')
@@ -98,6 +109,63 @@ export const useUserStore = defineStore('user', () => {
     }
     if (token.value) {
       fetchUserInfo()
+      initWebSocket()
+    }
+  }
+
+  function initWebSocket() {
+    if (token.value) {
+      wsService.connect(token.value)
+      
+      wsService.on('user-data-updated', (data: any) => {
+        if (userInfo.value && data.id === userInfo.value.id) {
+          userInfo.value = { ...userInfo.value, ...data }
+          localStorage.setItem('userInfo', JSON.stringify(userInfo.value))
+        }
+      })
+
+      wsService.on('points-changed', (data: any) => {
+        if (userInfo.value) {
+          userInfo.value.points = data.points
+          localStorage.setItem('userInfo', JSON.stringify(userInfo.value))
+        }
+      })
+
+      wsService.on('coin-changed', (data: any) => {
+        if (userInfo.value) {
+          userInfo.value.blindBoxCoin = data.coin
+          localStorage.setItem('userInfo', JSON.stringify(userInfo.value))
+        }
+      })
+
+      wsService.on('check-in-success', (data: any) => {
+        if (userInfo.value) {
+          userInfo.value.checkInDays = data.check_in_days
+          userInfo.value.points = data.total_points
+          userInfo.value.isCheckedIn = true
+          localStorage.setItem('userInfo', JSON.stringify(userInfo.value))
+        }
+      })
+    }
+  }
+
+  async function checkIn() {
+    if (!userInfo.value) return
+    try {
+      const res = await userAPI.checkIn(userInfo.value.id)
+      const data = res.data || res
+      if (data.success) {
+        ElMessage.success('签到成功')
+        if (userInfo.value.checkInDays !== undefined) {
+          userInfo.value.checkInDays = data.checkInDays || userInfo.value.checkInDays + 1
+        }
+        if (userInfo.value.points !== undefined && data.points) {
+          userInfo.value.points += data.points
+        }
+        localStorage.setItem('userInfo', JSON.stringify(userInfo.value))
+      }
+    } catch (error) {
+      ElMessage.error('签到失败')
     }
   }
 
@@ -114,6 +182,8 @@ export const useUserStore = defineStore('user', () => {
     register,
     fetchUserInfo,
     logout,
-    init
+    init,
+    initWebSocket,
+    checkIn
   }
 })

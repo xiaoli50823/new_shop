@@ -41,7 +41,7 @@ router.post('/register', registerRules, async (req, res) => {
     );
 
     res.status(201).json({
-      code: 201,
+      code: 200,
       data: { user: user.toJSON(), token },
       message: '注册成功'
     });

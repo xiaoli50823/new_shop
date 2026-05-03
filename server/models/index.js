@@ -10,12 +10,25 @@ const OrderItem = require('./OrderItem');
 const UserCabinet = require('./UserCabinet');
 const Coupon = require('./Coupon');
 const DrawRecord = require('./DrawRecord');
+const Cart = require('./Cart');
+const PointsProduct = require('./PointsProduct');
+const PointsExchange = require('./PointsExchange');
+const HotProduct = require('./HotProduct');
+const Address = require('./Address');
 
 // ============ 关联关系 ============
 
 // 盲盒 <-> 奖品 (一对多)
 BlindBox.hasMany(Prize, { foreignKey: 'blind_box_id', as: 'prizes' });
 Prize.belongsTo(BlindBox, { foreignKey: 'blind_box_id', as: 'blindBox' });
+
+// 用户 <-> 购物车 (一对多)
+User.hasMany(Cart, { foreignKey: 'user_id', as: 'cartItems' });
+Cart.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
+// 盲盒 <-> 购物车 (一对多)
+BlindBox.hasMany(Cart, { foreignKey: 'blind_box_id', as: 'cartItems' });
+Cart.belongsTo(BlindBox, { foreignKey: 'blind_box_id', as: 'blindBox' });
 
 // 用户 <-> 订单 (一对多)
 User.hasMany(Order, { foreignKey: 'user_id', as: 'orders' });
@@ -61,6 +74,26 @@ DrawRecord.belongsTo(BlindBox, { foreignKey: 'blind_box_id', as: 'blindBox' });
 Prize.hasMany(DrawRecord, { foreignKey: 'prize_id', as: 'drawRecords' });
 DrawRecord.belongsTo(Prize, { foreignKey: 'prize_id', as: 'prize' });
 
+// 热门周边 <-> 购物车 (一对多)
+HotProduct.hasMany(Cart, { foreignKey: 'hot_product_id', as: 'cartItems' });
+Cart.belongsTo(HotProduct, { foreignKey: 'hot_product_id', as: 'hotProduct' });
+
+// 热门周边 -> 订单项 (一对多)
+HotProduct.hasMany(OrderItem, { foreignKey: 'hot_product_id', as: 'orderItems' });
+OrderItem.belongsTo(HotProduct, { foreignKey: 'hot_product_id', as: 'hotProduct' });
+
+// 用户 <-> 积分兑换记录 (一对多)
+User.hasMany(PointsExchange, { foreignKey: 'user_id', as: 'pointsExchanges' });
+PointsExchange.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
+// 积分商品 <-> 积分兑换记录 (一对多)
+PointsProduct.hasMany(PointsExchange, { foreignKey: 'product_id', as: 'exchanges' });
+PointsExchange.belongsTo(PointsProduct, { foreignKey: 'product_id', as: 'product' });
+
+// 用户 <-> 收货地址 (一对多)
+User.hasMany(Address, { foreignKey: 'user_id', as: 'addresses' });
+Address.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
 module.exports = {
   sequelize,
   User,
@@ -70,5 +103,10 @@ module.exports = {
   OrderItem,
   UserCabinet,
   Coupon,
-  DrawRecord
+  DrawRecord,
+  Cart,
+  PointsProduct,
+  PointsExchange,
+  HotProduct,
+  Address
 };

@@ -14,44 +14,45 @@ import BottomTabBar from '@/components/BottomTabBar.vue'
 const route = useRoute()
 const userStore = useUserStore()
 
-// 初始化用户状态
 userStore.init()
 
-// 判断是否显示底部导航栏
 const showTabBar = computed(() => {
   return route.meta.showTabBar === true
 })
 </script>
 
 <style>
-/* ==================== 全局样式 ==================== */
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --primary-pink: #FF6B9D;
-  --primary-orange: #FF8E53;
-  --primary-gradient: linear-gradient(135deg, #FF6B9D 0%, #FF8E53 100%);
-  --bg-pink: #FFF5F7;
-  --bg-white: #FFFFFF;
-  --text-primary: #333333;
-  --text-secondary: #666666;
-  --text-light: #999999;
-  --border-color: #F0F0F0;
-  --shadow-card: 0 2px 12px rgba(255, 107, 157, 0.1);
-  --shadow-card-hover: 0 4px 20px rgba(255, 107, 157, 0.2);
-  --radius-card: 16px;
-  --radius-btn: 24px;
-  --radius-sm: 8px;
-  --danger: #FF4757;
-  --success: #2ED573;
-  --warning: #FFA502;
+  --ink: #3A5068;
+  --ink-light: #5B7A9A;
+  --ink-subtle: #E8EDF2;
+  --charcoal: #4A4A4A;
+  --charcoal-light: #8A8A8A;
+  --beige: #FAFAF8;
+  --beige-warm: #F5F3EF;
+  --white: #FFFFFF;
+  --text-primary: #2C2C2C;
+  --text-secondary: #6B6B6B;
+  --text-light: #9B9B9B;
+  --border: #E8E8E6;
+  --border-light: #F0F0EE;
+  --danger: #C44D4D;
+  --success: #5A8F6A;
+  --warning: #B8833E;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-card-hover: 0 4px 16px rgba(0, 0, 0, 0.06);
+  --radius-card: 12px;
+  --radius-btn: 8px;
+  --radius-sm: 6px;
 }
 
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  -webkit-tap-highlight-color: transparent;
 }
 
 html, body {
@@ -60,66 +61,86 @@ html, body {
   font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 14px;
   color: var(--text-primary);
-  background-color: var(--bg-pink);
+  background: var(--beige);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
 #app {
   width: 100%;
   min-height: 100vh;
-  background-color: var(--bg-pink);
-  max-width: 750px;
-  margin: 0 auto;
-  position: relative;
+  background: var(--beige);
 }
 
-/* 滚动条样式 */
 ::-webkit-scrollbar {
-  width: 0;
-  height: 0;
+  width: 6px;
+  height: 6px;
 }
 
-/* Element Plus 主题覆盖 */
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D0D0CE;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #B0B0AE;
+}
+
 :root {
-  --el-color-primary: #FF6B9D;
-  --el-color-primary-light-3: #FF8DB5;
-  --el-color-primary-light-5: #FFB0CC;
-  --el-color-primary-light-7: #FFD3E3;
-  --el-color-primary-light-8: #FFE4EE;
-  --el-color-primary-light-9: #FFF0F5;
-  --el-color-primary-dark-2: #E05580;
+  --el-color-primary: var(--ink);
+  --el-color-primary-light-3: var(--ink-light);
+  --el-color-primary-light-5: #8DAAC5;
+  --el-color-primary-light-7: #C5D5E2;
+  --el-color-primary-light-8: #DDE6EF;
+  --el-color-primary-light-9: #EEF2F6;
+  --el-color-primary-dark-2: #2C4056;
   --el-border-radius-base: 8px;
 }
 
 .el-button--primary {
-  background: var(--primary-gradient) !important;
+  background: var(--ink) !important;
   border: none !important;
+  border-radius: var(--radius-btn) !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.3px;
 }
 
 .el-button--primary:hover,
 .el-button--primary:focus {
-  opacity: 0.9;
+  background: var(--ink-light) !important;
 }
 
-/* 全局工具类 */
-.text-gradient {
-  background: var(--primary-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+.el-card {
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--border);
+}
+
+.el-dialog {
+  border-radius: var(--radius-card);
 }
 
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
-/* 隐藏滚动条但保留滚动 */
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
+}
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 24px;
 }
 </style>

@@ -280,13 +280,13 @@ onMounted(() => {
 <style scoped>
 .discover-page {
   min-height: 100vh;
-  background: var(--bg-pink);
+  background: var(--beige);
   padding-bottom: 70px;
 }
 
 .search-header {
   padding: 12px 16px;
-  background: linear-gradient(180deg, #FFE4EE 0%, var(--bg-pink) 100%);
+  background: var(--white);
 }
 
 .search-bar {
@@ -424,10 +424,10 @@ onMounted(() => {
   color: #FFFFFF;
 }
 
-.tag-hot { background: linear-gradient(135deg, #FF6B9D, #FF4757); }
-.tag-new { background: linear-gradient(135deg, #7ED56F, #2ED573); }
-.tag-limited { background: linear-gradient(135deg, #FFD700, #FFA502); }
-.tag-default { background: linear-gradient(135deg, #667eea, #764ba2); }
+.tag-hot { background: var(--ink); }
+.tag-new { background: var(--ink); }
+.tag-limited { background: var(--ink); }
+.tag-default { background: var(--ink); }
 
 .item-info {
   padding: 10px 12px 12px;

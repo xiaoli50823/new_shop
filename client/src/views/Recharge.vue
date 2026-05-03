@@ -57,7 +57,7 @@
           :class="{ active: selectedPay === method.value }"
           @click="selectedPay = method.value"
         >
-          <span class="pay-icon">{{ method.icon }}</span>
+          <span class="pay-icon">{{ method.iconText }}</span>
           <span class="pay-name">{{ method.label }}</span>
           <el-icon v-if="selectedPay === method.value" class="check-icon"><CircleCheck /></el-icon>
         </div>
@@ -113,9 +113,9 @@ const presetAmounts = [
 
 // 支付方式
 const payMethods = [
-  { label: '微信支付', value: 'wechat', icon: '💚' },
-  { label: '支付宝', value: 'alipay', icon: '💙' },
-  { label: '银行卡', value: 'bank', icon: '💳' }
+  { label: '微信支付', value: 'wechat', iconText: 'W' },
+  { label: '支付宝', value: 'alipay', iconText: 'A' },
+  { label: '银行卡', value: 'bank', iconText: 'B' }
 ]
 
 // 最终金额

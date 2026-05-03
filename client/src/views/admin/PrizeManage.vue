@@ -12,14 +12,14 @@
         >
           <template #prefix><el-icon><Search /></el-icon></template>
         </el-input>
-        <el-select v-model="filterRarity" placeholder="稀有度筛选" clearable style="width: 140px">
+        <el-select v-model="filterRarity" placeholder="稀有度筛选" clearable style="width: 140px" @change="handleSearch">
           <el-option label="全部" value="" />
-          <el-option label="普通" value="normal" />
+          <el-option label="普通" value="common" />
           <el-option label="稀有" value="rare" />
           <el-option label="超稀有" value="super_rare" />
           <el-option label="隐藏款" value="hidden" />
         </el-select>
-        <el-select v-model="filterBlindBox" placeholder="所属盲盒" clearable style="width: 180px">
+        <el-select v-model="filterBlindBox" placeholder="所属盲盒" clearable style="width: 180px" @change="handleSearch">
           <el-option label="全部" value="" />
           <el-option v-for="box in blindBoxOptions" :key="box.id" :label="box.name" :value="box.id" />
         </el-select>
@@ -102,7 +102,7 @@
         </el-form-item>
         <el-form-item label="稀有度" prop="rarity">
           <el-select v-model="form.rarity" placeholder="请选择稀有度" style="width: 100%">
-            <el-option label="普通" value="normal" />
+            <el-option label="普通" value="common" />
             <el-option label="稀有" value="rare" />
             <el-option label="超稀有" value="super_rare" />
             <el-option label="隐藏款" value="hidden" />
@@ -139,7 +139,7 @@ const pageSize = ref(10)
 const totalCount = ref(0)
 
 const rarityTagMap: Record<string, { type: string; label: string }> = {
-  normal: { type: 'info', label: '普通' },
+  common: { type: 'info', label: '普通' },
   rare: { type: '', label: '稀有' },
   super_rare: { type: 'warning', label: '超稀有' },
   hidden: { type: 'danger', label: '隐藏款' }
@@ -156,7 +156,7 @@ const defaultForm = () => ({
   id: '',
   blindBoxId: '',
   name: '',
-  rarity: 'normal',
+  rarity: 'common',
   probability: 0,
   stock: 0
 })
@@ -187,7 +187,7 @@ const openEditDialog = (row: any) => {
     id: row._id || row.id,
     blindBoxId: row.blindBoxId || '',
     name: row.name || '',
-    rarity: row.rarity || 'normal',
+    rarity: row.rarity || 'common',
     probability: row.probability || 0,
     stock: row.stock || 0
   })
@@ -196,7 +196,7 @@ const openEditDialog = (row: any) => {
 
 const submitForm = async () => {
   if (!formRef.value) return
-  await formRef.value.validate(async (valid) => {
+  await formRef.value.validate(async (valid: boolean) => {
     if (!valid) return
     submitting.value = true
     try {
@@ -253,7 +253,7 @@ const exportData = () => {
 
 const loadBlindBoxOptions = async () => {
   try {
-    const res: any = await api.get('/blind-boxes', { params: { pageSize: 999 } })
+    const res: any = await api.get('/blind-boxes', { params: { pageSize: 100 } })
     const data = res?.data || res || {}
     const list = data.list || data || []
     blindBoxOptions.value = list.map((b: any) => ({ id: b._id || b.id, name: b.name }))
@@ -277,7 +277,8 @@ const loadList = async () => {
     const data = res?.data || res || {}
     prizeList.value = (data.list || data || []).map((p: any) => ({
       ...p,
-      id: p._id || p.id
+      id: p._id || p.id,
+      blindBoxName: p.blindBox?.name || ''
     }))
     totalCount.value = data.total || prizeList.value.length
   } catch {

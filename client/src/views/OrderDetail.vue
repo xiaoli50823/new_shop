@@ -224,11 +224,11 @@ onMounted(() => {
   color: #FFFFFF;
 }
 
-.bg-pending { background: linear-gradient(135deg, #FFA502, #FFD700); }
-.bg-paid { background: linear-gradient(135deg, #FF6B9D, #FF8E53); }
-.bg-shipping { background: linear-gradient(135deg, #667eea, #764ba2); }
-.bg-completed { background: linear-gradient(135deg, #2ED573, #7ED56F); }
-.bg-cancelled { background: linear-gradient(135deg, #999, #bbb); }
+.bg-pending { background: var(--warning); color: #fff; }
+.bg-paid { background: var(--ink); color: #fff; }
+.bg-shipping { background: var(--ink); color: #fff; }
+.bg-completed { background: var(--success); color: #fff; }
+.bg-cancelled { background: var(--text-light); color: #fff; }
 
 .status-content {
   text-align: center;

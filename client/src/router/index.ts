@@ -5,13 +5,42 @@ import BoxCabinet from '../views/BoxCabinet.vue'
 import BlindBoxDetail from '../views/BlindBoxDetail.vue'
 import Personal from '../views/Personal.vue'
 
-// 路由守卫
 const requireAuth = (to: any, from: any, next: any) => {
   const token = localStorage.getItem('token')
   if (!token) {
-    next('/login')
+    next({
+      path: '/login',
+      query: { redirect: to.fullPath }
+    })
   } else {
     next()
+  }
+}
+
+const requireAdmin = (to: any, from: any, next: any) => {
+  const token = localStorage.getItem('token')
+  const userStr = localStorage.getItem('user')
+  
+  if (!token) {
+    next({
+      path: '/login',
+      query: { redirect: to.fullPath }
+    })
+    return
+  }
+  
+  try {
+    const user = JSON.parse(userStr || '{}')
+    if (user.role !== 'admin') {
+      next('/')
+      return
+    }
+    next()
+  } catch {
+    next({
+      path: '/login',
+      query: { redirect: to.fullPath }
+    })
   }
 }
 
@@ -44,13 +73,29 @@ const routes: Array<RouteRecordRaw> = [
     beforeEnter: requireAuth
   },
   {
+    path: '/hot',
+    name: 'HotProducts',
+    component: () => import('../views/HotProducts.vue')
+  },
+  {
+    path: '/infinite',
+    name: 'InfiniteBlindBox',
+    component: () => import('../views/InfiniteBlindBox.vue')
+  },
+  {
+    path: '/new',
+    name: 'NewProducts',
+    component: () => import('../views/NewProducts.vue')
+  },
+  {
     path: '/admin',
     name: 'Admin',
     component: () => import('../views/admin/Admin.vue'),
-    beforeEnter: requireAuth,
+    beforeEnter: requireAdmin,
     children: [
       {
         path: '',
+        name: 'AdminIndex',
         redirect: 'dashboard'
       },
       {
