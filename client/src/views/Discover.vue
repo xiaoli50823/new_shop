@@ -145,15 +145,20 @@ const router = useRouter()
 const route = useRoute()
 
 // 分类
-const categories = [
-  { label: '全部', value: '' },
-  { label: '动漫', value: 'anime' },
-  { label: '游戏', value: 'game' },
-  { label: '美妆', value: 'beauty' },
-  { label: '3C', value: '3c' },
-  { label: '文具', value: 'stationery' },
-  { label: '零食', value: 'snack' }
-]
+const categories = ref<{ label: string; value: string }[]>([
+  { label: '全部', value: '' }
+])
+const categoryMap = ref<Map<string, string>>(new Map())
+
+onMounted(async () => {
+  try {
+    const res: any = await api.get('/categories')
+    const cats = (res.data || []).map((c: any) => ({ label: c.name, value: c.value }))
+    categories.value = [{ label: '全部', value: '' }, ...cats]
+  } catch {
+    // 使用默认
+  }
+})
 
 // 排序
 const sortOptions = [

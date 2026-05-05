@@ -197,27 +197,27 @@ const userCoins = computed(() => userStore.coins || 0)
 const banners = [
       { 
         tag: '热卖', 
-        title: '海贼王一番赏', 
-        subtitle: '人气热卖中·全新系列', 
-        buttonText: '立即购买',
-        image: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&h=600&fit=crop',
-        link: '/discover'
+        title: '赛博边际 · 义体迷行', 
+        subtitle: '赛博朋克主题盲盒 · 义体改造人', 
+        buttonText: '立即开盒',
+        image: 'https://www.img2link.com/images/2026/05/04/61ab0675ad269e970a6e9b9c1d5fda01.png',
+        link: '/blind-box/1'
       },
       { 
         tag: '新品', 
-        title: '鬼灭之刃盲盒', 
-        subtitle: '限量发售·错过不再', 
+        title: '限定款潮玩手办', 
+        subtitle: '设计师联名系列 · 今日首发', 
         buttonText: '立即开盒',
-        image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&h=600&fit=crop',
-        link: '/discover'
+        image: 'https://images.unsplash.com/photo-1777216092678-ab3cac218f80?q=80&w=1599&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        link: '/hot'
       },
       { 
-        tag: '限定', 
-        title: '潮玩手办限定', 
-        subtitle: '设计师联名款·今日首发', 
+        tag: '限时', 
+        title: '人气精选周边', 
+        subtitle: '超多好物 · 等你来淘', 
         buttonText: '立即抢购',
-        image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&h=600&fit=crop',
-        link: '/discover'
+        image: 'https://www.img2link.com/images/2026/05/04/41f98b85812d9b1b5e7fec762704350c.png',
+        link: '/hot'
       }
     ]
 
@@ -269,7 +269,7 @@ const formatSales = (sales: number) => {
   return sales.toString()
 }
 
-onMounted(() => { startCarousel(); fetchHotBoxes(); fetchCategoryBoxes() })
+onMounted(() => { startCarousel(); fetchHotBoxes(); fetchCategoryBoxes(); userStore.fetchUserInfo() })
 onUnmounted(() => { stopCarousel() })
 
 const navItems = [

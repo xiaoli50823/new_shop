@@ -4,7 +4,7 @@
       <div class="header-content">
         <div class="avatar-mark">U</div>
         <div class="header-info">
-          <h2 class="username">星球玩家</h2>
+          <h2 class="username">{{ username }}</h2>
           <div class="level-row">
             <span class="level-badge">Lv.6</span>
             <span class="exp-text">经验值 11296 / 200000</span>
@@ -123,19 +123,43 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useUserStore } from '@/stores/user'
+import { pointsAPI, orderAPI } from '@/services/api'
 
 const router = useRouter()
+const userStore = useUserStore()
 
-const stats = ref({
-  points: 200, blindBoxCoin: 50, balance: '0.00', drawCount: 10
-})
+const stats = computed(() => ({
+  points: userStore.points || 0,
+  blindBoxCoin: userStore.coins || 0,
+  balance: userStore.userInfo?.balance || '0.00',
+  drawCount: userStore.userInfo?.drawCount || 0
+}))
 
-const entries = ref([
-  { label: '我的订单', sub: '查看订单详情', action: () => goToEntry('orders') },
+const username = computed(() => userStore.username || '星球玩家')
+const couponCount = ref(0)
+const orderCount = ref(0)
+
+const fetchCouponAndOrderCount = async () => {
+  try {
+    const [couponRes, orderRes] = await Promise.all([
+      pointsAPI.getMyExchanges({ pageSize: 100 }),
+      orderAPI.getMyOrders({ pageSize: 100 })
+    ])
+    const exchanges = (couponRes as any).data?.list || []
+    couponCount.value = exchanges.filter((r: any) =>
+      r.product?.category === 'coupon' || r.product?.category === 'voucher'
+    ).length
+    orderCount.value = (orderRes as any).data?.total || 0
+  } catch { /* silent */ }
+}
+
+const entries = computed(() => [
+  { label: '我的订单', sub: orderCount.value > 0 ? `${orderCount.value} 笔订单` : '暂无订单', action: () => goToEntry('orders') },
   { label: '我的盒柜', sub: '管理已抽奖品', action: () => router.push('/box-cabinet') },
-  { label: '优惠券', sub: '查看可用优惠券', action: () => goToEntry('coupons') },
+  { label: '优惠券', sub: couponCount.value > 0 ? `${couponCount.value} 张可用` : '暂无优惠券', action: () => goToEntry('coupons') },
   { label: '收货地址', sub: '管理收货地址', action: () => goToEntry('address') },
   { label: '积分商城', sub: '兑换积分好礼', action: () => router.push('/points-mall') },
   { label: '每日签到', sub: '签到领取积分', action: () => router.push('/check-in') }
@@ -182,7 +206,10 @@ const handleLogout = () => {
   router.push('/login')
 }
 
-onMounted(() => { /* fetch stats */ })
+onMounted(() => {
+  userStore.fetchUserInfo()
+  fetchCouponAndOrderCount()
+})
 </script>
 
 <style scoped>

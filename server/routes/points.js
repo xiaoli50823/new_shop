@@ -112,7 +112,7 @@ router.post('/exchange', auth, async (req, res) => {
     }
 
     const exchangeCount = await PointsExchange.count({
-      where: { user_id: userId, product_id: productId, status: { [sequelize.Op.ne]: 'cancelled' } }
+      where: { user_id: userId, product_id: productId, status: { [Op.ne]: 'cancelled' } }
     });
 
     if (exchangeCount + quantity > product.exchange_limit) {
@@ -172,7 +172,7 @@ router.get('/my/exchanges', auth, async (req, res) => {
       include: [{
         model: PointsProduct,
         as: 'product',
-        attributes: ['id', 'name', 'image', 'points_required']
+        attributes: ['id', 'name', 'image', 'points_required', 'category']
       }],
       limit: parseInt(pageSize),
       offset: (parseInt(page) - 1) * parseInt(pageSize),

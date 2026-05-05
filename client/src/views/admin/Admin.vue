@@ -3,7 +3,14 @@
     <!-- 左侧侧边栏 -->
     <aside class="sidebar" :class="{ collapsed: isCollapsed }">
       <div class="logo-area">
-        <div class="logo-icon">📦</div>
+        <div class="logo-icon">
+          <svg viewBox="0 0 32 32" width="32" height="32">
+            <rect x="2" y="8" width="28" height="20" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+            <rect x="2" y="4" width="28" height="8" rx="3" fill="currentColor" opacity="0.85"/>
+            <line x1="12" y1="14" x2="20" y2="14" stroke="#fff" stroke-width="1.5" opacity="0.6"/>
+            <circle cx="16" cy="8" r="2" fill="#fff"/>
+          </svg>
+        </div>
         <div v-show="!isCollapsed" class="logo-text">
           <div class="logo-title">盲盒管理系统</div>
           <div class="logo-subtitle">BLIND BOX MANAGE</div>
@@ -29,6 +36,10 @@
         <el-menu-item index="/admin/prizes">
           <el-icon><Present /></el-icon>
           <template #title>奖品管理</template>
+        </el-menu-item>
+        <el-menu-item index="/admin/categories">
+          <el-icon><Menu /></el-icon>
+          <template #title>分类管理</template>
         </el-menu-item>
         <el-menu-item index="/admin/order">
           <el-icon><List /></el-icon>
@@ -122,7 +133,7 @@
 import { ref, computed, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
-import { ArrowDown, User, Lock, SwitchButton, Expand, Fold, TrendCharts, Box, Present, List, DataAnalysis, Setting } from '@element-plus/icons-vue'
+import { ArrowDown, User, Lock, SwitchButton, Expand, Fold, TrendCharts, Box, Present, Menu, List, DataAnalysis, Setting } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -138,6 +149,7 @@ const breadcrumbMap: Record<string, string> = {
   '/admin/dashboard': '数据大盘',
   '/admin/blind-box': '盲盒管理',
   '/admin/prizes': '奖品管理',
+  '/admin/categories': '分类管理',
   '/admin/order': '订单管理',
   '/admin/user': '用户管理',
   '/admin/revenue': '营收报表',
@@ -250,7 +262,9 @@ const submitPassword = async () => {
 }
 
 .logo-icon {
-  font-size: 32px;
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff;
   flex-shrink: 0;
 }
 

@@ -88,6 +88,52 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('../views/NewProducts.vue')
   },
   {
+    path: '/search',
+    name: 'Search',
+    component: () => import('../views/Search.vue')
+  },
+  {
+    path: '/coupons',
+    name: 'Coupons',
+    component: () => {
+      console.log('Loading Coupons component');
+      return import('../views/Coupons.vue');
+    },
+    beforeEnter: requireAuth
+  },
+  {
+    path: '/orders',
+    name: 'MyOrders',
+    component: () => {
+      console.log('Loading MyOrders component');
+      return import('../views/MyOrders.vue');
+    },
+    beforeEnter: requireAuth
+  },
+  {
+    path: '/check-in',
+    name: 'CheckIn',
+    component: () => import('../views/CheckIn.vue'),
+    beforeEnter: requireAuth
+  },
+  {
+    path: '/points-mall',
+    name: 'PointsMall',
+    component: () => import('../views/PointsMall.vue')
+  },
+  {
+    path: '/address',
+    name: 'Address',
+    component: () => import('../views/Address.vue'),
+    beforeEnter: requireAuth
+  },
+  {
+    path: '/recharge',
+    name: 'Recharge',
+    component: () => import('../views/Recharge.vue'),
+    beforeEnter: requireAuth
+  },
+  {
     path: '/admin',
     name: 'Admin',
     component: () => import('../views/admin/Admin.vue'),
@@ -107,6 +153,11 @@ const routes: Array<RouteRecordRaw> = [
         path: 'blind-box-manage',
         name: 'BlindBoxManage',
         component: () => import('../views/admin/BlindBoxManage.vue')
+      },
+      {
+        path: 'categories',
+        name: 'CategoryManage',
+        component: () => import('../views/admin/CategoryManage.vue')
       },
       {
         path: 'order-manage',

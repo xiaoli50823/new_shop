@@ -131,6 +131,15 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
+            <el-form-item label="分类">
+              <el-select v-model="form.categoryId" placeholder="选择分类" clearable style="width: 100%">
+                <el-option v-for="cat in categoryOptions" :key="cat.id" :label="cat.name" :value="cat.id" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16">
+          <el-col :span="24">
             <el-form-item label="状态">
               <el-switch v-model="form.status" active-value="active" inactive-value="inactive" active-text="上架" inactive-text="下架" />
             </el-form-item>
@@ -245,6 +254,9 @@ const typeTagMap: Record<string, { type: string; label: string }> = {
   hash: { type: 'info', label: '哈希盲盒' }
 }
 
+// 分类选项
+const categoryOptions = ref<any[]>([])
+
 // 盲盒列表
 const boxList = ref<any[]>([])
 
@@ -265,6 +277,7 @@ const defaultForm = () => ({
   stock: 0,
   guarantee: 0,
   maxHidden: 0,
+  categoryId: '' as string | number,
   prizes: [] as Array<{ name: string; probability: number; stock: number; rarity: string }>
 })
 
@@ -312,6 +325,7 @@ const openEditDialog = (row: any) => {
     stock: row.stock || 0,
     guarantee: row.guarantee || 0,
     maxHidden: row.maxHidden || 0,
+    categoryId: row.categoryId || row.category_id || '',
     prizes: (row.prizes || []).map((p: any) => ({
       name: p.name || '',
       probability: p.probability || 0,
@@ -328,7 +342,7 @@ const submitForm = async () => {
     if (!valid) return
     submitting.value = true
     try {
-      const payload = {
+      const payload: any = {
         name: form.name,
         price: form.price,
         type: form.type,
@@ -340,6 +354,9 @@ const submitForm = async () => {
         guarantee: form.guarantee,
         maxHidden: form.maxHidden,
         prizes: form.prizes
+      }
+      if (form.categoryId) {
+        payload.categoryId = form.categoryId
       }
       if (isEdit.value) {
         await api.put(`/blind-boxes/${form.id}`, payload)
@@ -424,7 +441,17 @@ const loadList = async () => {
 
 onMounted(() => {
   loadList()
+  loadCategories()
 })
+
+const loadCategories = async () => {
+  try {
+    const res: any = await api.get('/categories')
+    categoryOptions.value = res.data || []
+  } catch {
+    // 忽略
+  }
+}
 </script>
 
 <style scoped>

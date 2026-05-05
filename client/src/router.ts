@@ -132,6 +132,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '奖品管理' }
       },
       {
+        path: 'categories',
+        name: 'AdminCategories',
+        component: () => import('@/views/admin/CategoryManage.vue'),
+        meta: { title: '分类管理' }
+      },
+      {
         path: 'order',
         name: 'AdminOrder',
         component: () => import('@/views/admin/OrderManage.vue'),

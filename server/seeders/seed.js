@@ -3,18 +3,21 @@
  * 运行: node seeders/seed.js
  */
 require('dotenv').config();
-const { sequelize, User, BlindBox, Prize, Order, OrderItem, UserCabinet, Coupon, DrawRecord, HotProduct, PointsProduct } = require('../models');
+const { sequelize, User, BlindBox, Prize, Order, OrderItem, UserCabinet, Coupon, DrawRecord, HotProduct, PointsProduct, Category } = require('../models');
 
 async function seed() {
   try {
     console.log('🔄 开始初始化数据...');
     await sequelize.authenticate();
-    await sequelize.sync({ force: true });
-    console.log('✅ 数据库表重建完成');
+    await sequelize.sync({ alter: true });
+    console.log('✅ 数据库表结构同步完成');
+
+    const adminExists = await User.findOne({ where: { email: 'admin@blindbox.com' } });
+    const userExists = await User.findOne({ where: { email: 'user@blindbox.com' } });
 
     // ============ 用户 ============
 
-    const admin = await User.create({
+    const admin = adminExists || await User.create({
       username: 'admin',
       email: 'admin@blindbox.com',
       password: 'admin123',
@@ -25,7 +28,7 @@ async function seed() {
       blindBoxCoin: 500
     });
 
-    const user = await User.create({
+    const user = userExists || await User.create({
       username: 'testuser',
       email: 'user@blindbox.com',
       password: 'user123',
@@ -36,10 +39,52 @@ async function seed() {
       blindBoxCoin: 200
     });
 
+    // ============ 盲盒分类 ============
+    const categoriesData = [
+      { name: '动漫', value: 'anime', icon: '', description: '动漫IP手办盲盒', sort_order: 100 },
+      { name: '游戏', value: 'game', icon: '', description: '游戏周边盲盒', sort_order: 90 },
+      { name: '潮玩', value: 'figure', icon: '', description: '设计师潮玩手办', sort_order: 80 },
+      { name: '影视', value: 'movie', icon: '', description: '影视IP周边', sort_order: 70 },
+      { name: '美妆', value: 'beauty', icon: '', description: '美妆护肤惊喜盒', sort_order: 60 },
+      { name: '数码', value: '3c', icon: '', description: '3C数码配件', sort_order: 50 }
+    ];
+
+    for (const catData of categoriesData) {
+      const exists = await Category.findOne({ where: { value: catData.value } });
+      if (!exists) {
+        await Category.create({ ...catData, status: 'active' });
+      }
+    }
+
+    const categoryMap = {};
+    const allCategories = await Category.findAll();
+    allCategories.forEach(c => { categoryMap[c.value] = c.id; });
+
     console.log('✅ 用户数据创建完成 (admin/admin123, user/user123)');
 
     // ============ 盲盒 + 奖品 ============
     const blindBoxesData = [
+      {
+        name: '赛博边际 · 义体迷行',
+        price: 69.00,
+        type: 'lottery',
+        image: 'https://www.img2link.com/images/2026/05/04/61ab0675ad269e970a6e9b9c1d5fda01.png',
+        description: '赛博朋克主题盲盒，义体改造人系列，限量发售',
+        status: 'active',
+        stock: 100,
+        guarantee: 8,
+        maxHidden: 2,
+        category_id: categoryMap['anime'] || null,
+        category: 'anime',
+        tag: 'hot',
+        tagText: '热门',
+        prizes: [
+          { name: '义体改造人-普通款', image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&h=200&fit=crop', rarity: 'common', probability: 40.00, stock: 40 },
+          { name: '义体改造人-普通款B', image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=200&h=200&fit=crop', rarity: 'common', probability: 30.00, stock: 30 },
+          { name: '义体改造人-稀有款', image: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=200&h=200&fit=crop', rarity: 'rare', probability: 18.00, stock: 18 },
+          { name: '义体改造人-隐藏款', image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&h=200&fit=crop', rarity: 'hidden', probability: 12.00, stock: 12 }
+        ]
+      },
       {
         name: '海贼王一番赏',
         price: 39.00,
@@ -50,6 +95,8 @@ async function seed() {
         stock: 128,
         guarantee: 10,
         maxHidden: 3,
+        category_id: categoryMap['anime'] || null,
+        category: 'anime',
         tag: 'limited',
         tagText: '限量',
         prizes: [
@@ -70,6 +117,8 @@ async function seed() {
         stock: 88,
         guarantee: 8,
         maxHidden: 2,
+        category_id: categoryMap['anime'] || null,
+        category: 'anime',
         tag: 'hot',
         tagText: '热门',
         prizes: [
@@ -87,6 +136,8 @@ async function seed() {
         description: '龙珠经典角色，超赛悟空、贝吉塔等',
         status: 'active',
         stock: 156,
+        category_id: categoryMap['anime'] || null,
+        category: 'anime',
         tag: 'new',
         tagText: '新品',
         prizes: [
@@ -104,6 +155,8 @@ async function seed() {
         description: '设计师联名潮玩手办，随机款式',
         status: 'active',
         stock: 500,
+        category_id: categoryMap['figure'] || null,
+        category: 'figure',
         tag: 'hot',
         tagText: '热门',
         prizes: [
@@ -121,6 +174,8 @@ async function seed() {
         description: '大牌美妆小样+正装惊喜，每盒价值超过100元',
         status: 'active',
         stock: 300,
+        category_id: categoryMap['beauty'] || null,
+        category: 'beauty',
         tag: 'new',
         tagText: '新品',
         prizes: [
@@ -138,6 +193,8 @@ async function seed() {
         description: '链上确权数字藏品，限量发行',
         status: 'active',
         stock: 50,
+        category_id: categoryMap['3c'] || null,
+        category: '3c',
         tag: 'limited',
         tagText: '限量',
         prizes: [
@@ -149,6 +206,11 @@ async function seed() {
     ];
 
     for (const boxData of blindBoxesData) {
+      const existing = await BlindBox.findOne({ where: { name: boxData.name } });
+      if (existing) {
+        console.log(`⏭️  盲盒 "${boxData.name}" 已存在，跳过`);
+        continue;
+      }
       const { prizes, ...blindBoxFields } = boxData;
       const blindBox = await BlindBox.create(blindBoxFields);
       for (const prizeData of prizes) {
@@ -159,26 +221,29 @@ async function seed() {
     console.log('✅ 盲盒和奖品数据创建完成');
 
     // ============ 示例订单 ============
-    const order1 = await Order.create({
-      order_no: 'ORD202604300001ABC',
-      user_id: user.id,
-      type: 'purchase',
-      status: 'completed',
-      total: 39.00,
-      shipping_address: '北京市朝阳区xxx路xxx号',
-      shipping_contact: '张三',
-      shipping_phone: '13800000002',
-      payment_method: 'wechat'
-    });
+    const orderExists = await Order.findOne({ where: { order_no: 'ORD202604300001ABC' } });
+    if (!orderExists) {
+      const order1 = await Order.create({
+        order_no: 'ORD202604300001ABC',
+        user_id: user.id,
+        type: 'purchase',
+        status: 'completed',
+        total: 39.00,
+        shipping_address: '北京市朝阳区xxx路xxx号',
+        shipping_contact: '张三',
+        shipping_phone: '13800000002',
+        payment_method: 'wechat'
+      });
 
-    await OrderItem.create({
-      order_id: order1.id,
-      blind_box_id: 1,
-      name: '海贼王一番赏',
-      image: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=400&h=400&fit=crop',
-      price: 39.00,
-      quantity: 1
-    });
+      await OrderItem.create({
+        order_id: order1.id,
+        blind_box_id: 1,
+        name: '海贼王一番赏',
+        image: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=400&h=400&fit=crop',
+        price: 39.00,
+        quantity: 1
+      });
+    }
 
     console.log('✅ 示例订单创建完成');
 

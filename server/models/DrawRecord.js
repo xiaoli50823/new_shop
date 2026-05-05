@@ -34,7 +34,7 @@ const DrawRecord = sequelize.define('DrawRecord', {
     allowNull: true
   },
   draw_type: {
-    type: DataTypes.ENUM('single', 'five', 'ten'),
+    type: DataTypes.ENUM('single', 'multi5', 'multi10', 'five', 'ten'),
     allowNull: false
   },
   cost: {

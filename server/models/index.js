@@ -15,8 +15,13 @@ const PointsProduct = require('./PointsProduct');
 const PointsExchange = require('./PointsExchange');
 const HotProduct = require('./HotProduct');
 const Address = require('./Address');
+const Category = require('./Category');
 
 // ============ 关联关系 ============
+
+// 分类 <-> 盲盒 (一对多)
+Category.hasMany(BlindBox, { foreignKey: 'category_id', as: 'blindBoxes' });
+BlindBox.belongsTo(Category, { foreignKey: 'category_id', as: 'categoryInfo' });
 
 // 盲盒 <-> 奖品 (一对多)
 BlindBox.hasMany(Prize, { foreignKey: 'blind_box_id', as: 'prizes' });
@@ -108,5 +113,6 @@ module.exports = {
   PointsProduct,
   PointsExchange,
   HotProduct,
-  Address
+  Address,
+  Category
 };

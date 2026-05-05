@@ -2,7 +2,7 @@
   <div class="points-mall-page">
     <div class="page-header">
       <div class="header-content">
-        <h1>🎁 积分商城</h1>
+        <h1>积分商城</h1>
         <div class="user-points">
           <span class="points-label">当前积分</span>
           <span class="points-value">{{ userPoints }}</span>
@@ -28,7 +28,7 @@
     </div>
 
     <div v-else-if="productList.length === 0" class="empty-state">
-      <div class="empty-icon">🎁</div>
+      <div class="empty-icon">P</div>
       <h2>暂无商品</h2>
       <p>敬请期待更多好物</p>
     </div>
@@ -50,7 +50,7 @@
           <p class="product-desc">{{ product.description || '精美礼品等你来兑' }}</p>
           <div class="product-footer">
             <span class="points-price">
-              <i class="points-icon">💎</i>
+              <i class="points-icon">P</i>
               {{ product.points_required }} 积分
             </span>
             <button class="exchange-btn" :disabled="product.stock === 0">
@@ -68,8 +68,8 @@
           <div class="summary-info">
             <h4>{{ selectedProduct.name }}</h4>
             <p>
-              <i class="points-icon">💎</i>
-              {{ selectedProduct.points_required }} 积分 × {{ exchangeQuantity }}
+              <i class="points-icon">P</i>
+              {{ selectedProduct.points_required }} 积分 x {{ exchangeQuantity }}
             </p>
           </div>
         </div>
@@ -87,7 +87,7 @@
           <div class="points-summary">
             <span>消耗积分</span>
             <span class="total-points">
-              <i class="points-icon">💎</i>
+              <i class="points-icon">P</i>
               {{ selectedProduct.points_required * exchangeQuantity }}
             </span>
           </div>
@@ -313,7 +313,15 @@ onMounted(() => {
 }
 
 .empty-icon {
-  font-size: 80px;
+  width: 60px; height: 60px;
+  background: var(--ink-subtle);
+  color: var(--ink);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 700;
   margin-bottom: 20px;
 }
 
@@ -413,6 +421,17 @@ onMounted(() => {
 
 .points-icon {
   font-style: normal;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px; height: 18px;
+  background: var(--ink);
+  color: #fff;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  margin-right: 2px;
+  vertical-align: middle;
 }
 
 .exchange-btn {

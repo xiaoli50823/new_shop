@@ -21,7 +21,9 @@ router.get('/status', auth, async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id);
     const today = new Date().toISOString().split('T')[0];
-    const lastCheckIn = user.last_check_in ? user.last_check_in.toISOString().split('T')[0] : null;
+    const lastCheckIn = user.last_check_in
+      ? (typeof user.last_check_in === 'string' ? user.last_check_in : user.last_check_in.toISOString().split('T')[0])
+      : null;
 
     const isCheckedIn = lastCheckIn === today;
 
@@ -57,7 +59,9 @@ router.post('/check-in', auth, async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id);
     const today = new Date().toISOString().split('T')[0];
-    const lastCheckIn = user.last_check_in ? user.last_check_in.toISOString().split('T')[0] : null;
+    const lastCheckIn = user.last_check_in
+      ? (typeof user.last_check_in === 'string' ? user.last_check_in : user.last_check_in.toISOString().split('T')[0])
+      : null;
 
     if (lastCheckIn === today) {
       return res.status(400).json({ code: 400, message: '今日已签到' });
@@ -119,8 +123,10 @@ router.get('/records', auth, async (req, res) => {
       date.setDate(date.getDate() + i);
       const dateStr = date.toISOString().split('T')[0];
 
-      const lastCheckIn = user.last_check_in ? user.last_check_in.toISOString().split('T')[0] : null;
-      const isCheckedIn = lastCheckIn === dateStr || (i > user.check_in_days && dateStr <= lastCheckIn);
+      const lastCheckIn = user.last_check_in
+        ? (typeof user.last_check_in === 'string' ? user.last_check_in : user.last_check_in.toISOString().split('T')[0])
+        : null;
+      const isCheckedIn = lastCheckIn === dateStr || (i > user.check_in_days && dateStr <= (lastCheckIn || ''));
 
       records.push({
         date: dateStr,

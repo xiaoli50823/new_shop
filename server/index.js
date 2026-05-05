@@ -33,6 +33,7 @@ const pointsRoutes = require('./routes/points');
 const checkInRoutes = require('./routes/checkIn');
 const hotProductRoutes = require('./routes/hotProducts');
 const addressRoutes = require('./routes/address');
+const categoryRoutes = require('./routes/categories');
 
 // 创建 Express 应用
 const app = express();
@@ -60,6 +61,7 @@ app.use('/api/points', pointsRoutes);
 app.use('/api/check-in', checkInRoutes);
 app.use('/api/hot-products', hotProductRoutes);
 app.use('/api/addresses', addressRoutes);
+app.use('/api/categories', categoryRoutes);
 
 // 健康检查
 app.get('/api/health', async (req, res) => {

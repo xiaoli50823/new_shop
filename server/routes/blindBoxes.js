@@ -3,7 +3,7 @@
  */
 const express = require('express');
 const { Op } = require('sequelize');
-const { BlindBox, Prize, User, UserCabinet, DrawRecord, Order, sequelize } = require('../models');
+const { BlindBox, Prize, User, UserCabinet, DrawRecord, Order, sequelize, Category } = require('../models');
 const { auth, adminOnly } = require('../middleware/auth');
 const { createBlindBoxRules, drawRules, paginationRules, idParamRules } = require('../middleware/validate');
 const { drawAntiBrush } = require('../middleware/antiBrush');
@@ -66,7 +66,10 @@ router.get('/infinite', async (req, res) => {
     
     const where = { status: 'active', type: 'infinite' };
     if (category && category !== 'all') {
-      where.category = category;
+      const cat = await Category.findOne({ where: { value: category } });
+      if (cat) {
+        where.category_id = cat.id;
+      }
     }
 
     const boxes = await BlindBox.findAll({
@@ -117,7 +120,10 @@ router.get('/new', async (req, res) => {
     
     const where = { status: 'active', tag: 'new' };
     if (category && category !== 'all') {
-      where.category = category;
+      const cat = await Category.findOne({ where: { value: category } });
+      if (cat) {
+        where.category_id = cat.id;
+      }
     }
 
     const boxes = await BlindBox.findAll({
@@ -169,7 +175,10 @@ router.get('/category/:category', async (req, res) => {
     
     const where = { status: 'active' };
     if (category && category !== 'all') {
-      where.category = category;
+      const cat = await Category.findOne({ where: { value: category } });
+      if (cat) {
+        where.category_id = cat.id;
+      }
     }
 
     const boxes = await BlindBox.findAll({
@@ -216,10 +225,17 @@ router.get('/', paginationRules, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const pageSize = parseInt(req.query.pageSize) || 20;
-    const { type, status, keyword, category, tag } = req.query;
+    const { type, status, keyword, category, categoryId, tag, sort, minPrice, maxPrice } = req.query;
 
     const where = {};
     if (type) where.type = type;
+    if (categoryId) where.category_id = parseInt(categoryId);
+    if (category) {
+      const cat = await Category.findOne({ where: { value: category } });
+      if (cat) {
+        where.category_id = cat.id;
+      }
+    }
     if (status) {
       where.status = status;
     } else {
@@ -228,19 +244,23 @@ router.get('/', paginationRules, async (req, res) => {
     if (keyword) {
       where.name = { [Op.like]: `%${keyword}%` };
     }
-    if (category && category !== 'all') {
-      where.category = category;
-    }
     if (tag) {
       where.tag = tag;
     }
+    if (minPrice !== undefined) where.price = { ...where.price, [Op.gte]: parseFloat(minPrice) };
+    if (maxPrice !== undefined) where.price = { ...where.price, [Op.lte]: parseFloat(maxPrice) };
+
+    let order = [['id', 'DESC']];
+    if (sort === 'newest') order = [['created_at', 'DESC']];
+    if (sort === 'hot') order = [['total_draws', 'DESC']];
+    if (sort === 'price') order = [['price', 'ASC']];
 
     const { rows, count } = await BlindBox.findAndCountAll({
       where,
       include: [{ model: Prize, as: 'prizes' }],
       limit: pageSize,
       offset: (page - 1) * pageSize,
-      order: [['id', 'DESC']]
+      order
     });
 
     res.json({
@@ -278,10 +298,11 @@ router.get('/:id', idParamRules, async (req, res) => {
 router.post('/', auth, adminOnly, createBlindBoxRules, async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const { prizes, coverUrl, saleTime, ...otherData } = req.body;
+    const { prizes, coverUrl, saleTime, categoryId, ...otherData } = req.body;
     const boxData = { ...otherData };
     if (coverUrl !== undefined) boxData.cover_image = coverUrl;
     if (saleTime !== undefined) boxData.sale_time = saleTime;
+    if (categoryId !== undefined) boxData.category_id = categoryId;
     const blindBox = await BlindBox.create(boxData, { transaction: t });
 
     // 创建关联奖品
@@ -320,10 +341,11 @@ router.put('/:id', auth, adminOnly, idParamRules, async (req, res) => {
       return res.status(404).json({ code: 404, message: '盲盒不存在' });
     }
 
-    const { prizes, coverUrl, saleTime, ...otherData } = req.body;
+    const { prizes, coverUrl, saleTime, categoryId, ...otherData } = req.body;
     const boxData = { ...otherData };
     if (coverUrl !== undefined) boxData.cover_image = coverUrl;
     if (saleTime !== undefined) boxData.sale_time = saleTime;
+    if (categoryId !== undefined) boxData.category_id = categoryId;
     await blindBox.update(boxData, { transaction: t });
 
     // 如果传了奖品数据，全量替换
@@ -377,11 +399,29 @@ router.delete('/:id', auth, adminOnly, idParamRules, async (req, res) => {
 router.post('/:id/draw', auth, drawAntiBrush(), drawRules, async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const { drawType = 'single' } = req.body;
+    const { drawType, count: rawCount } = req.body;
     const blindBoxId = parseInt(req.params.id);
     const userId = req.user.id;
 
-    // 查询盲盒和奖品
+    // 兼容前端传来的 type 字段和 count 字段
+    let count = parseInt(rawCount) || 0;
+    let drawTypeName = drawType || 'single';
+
+    // 如果前端传了 count，根据 count 推断 drawTypeName
+    if (count > 0) {
+      if (count === 5) drawTypeName = 'multi5';
+      else if (count === 10) drawTypeName = 'multi10';
+      else drawTypeName = 'single';
+    }
+
+    // 如果前端传了旧版 drawType（single/five/ten），映射到 count
+    const drawCountMap = { single: 1, five: 5, ten: 10 };
+    if (!count && drawCountMap[drawType]) {
+      count = drawCountMap[drawType];
+    }
+    if (count <= 0) count = 1;
+
+    // 查询盲盒和奖品（行锁防并发）
     const blindBox = await BlindBox.findByPk(blindBoxId, {
       include: [{ model: Prize, as: 'prizes' }],
       transaction: t,
@@ -397,27 +437,28 @@ router.post('/:id/draw', auth, drawAntiBrush(), drawRules, async (req, res) => {
       return res.status(400).json({ code: 400, message: '盲盒已下架' });
     }
 
+    // 五连抽折扣 90%，十连抽折扣 85%
+    const discountMap = { single: 1, multi5: 0.9, multi10: 0.85, five: 1, ten: 1 };
+    const discount = discountMap[drawTypeName] || 1;
+    const totalCost = Math.round(parseFloat(blindBox.price) * count * discount * 100) / 100;
+
     const prizes = blindBox.prizes;
     if (!prizes || prizes.length === 0) {
       await t.rollback();
       return res.status(400).json({ code: 400, message: '该盲盒暂无奖品' });
     }
 
-    // 计算抽盒次数和费用
-    const drawCountMap = { single: 1, five: 5, ten: 10 };
-    const count = drawCountMap[drawType] || 1;
-    const totalCost = parseFloat(blindBox.price) * count;
-
     // 检查用户余额（盲盒币）
     const user = await User.findByPk(userId, { transaction: t, lock: true });
-    if (parseFloat(user.blind_box_coin) < totalCost) {
+    const userCoin = parseFloat(user.blind_box_coin || 0);
+    if (userCoin < totalCost) {
       await t.rollback();
       return res.status(400).json({ code: 400, message: '盲盒币余额不足' });
     }
 
     // 扣除盲盒币
     await user.update({
-      blind_box_coin: parseFloat(user.blind_box_coin) - totalCost
+      blind_box_coin: userCoin - totalCost
     }, { transaction: t });
 
     // 生成订单号
@@ -440,19 +481,27 @@ router.post('/:id/draw', auth, drawAntiBrush(), drawRules, async (req, res) => {
       stock: p.stock
     }));
 
-    // 执行抽盒算法
-    const drawResults = batchDraw(prizeDataForDraw, count, drawType, blindBox.type === 'hash');
+    // 执行抽盒算法（独立概率模型，允许抽空）
+    const hasGuarantee = count >= 5
+    const doubleGuarantee = count >= 10
+    const drawResults = batchDraw(prizeDataForDraw, count, hasGuarantee, doubleGuarantee)
 
     // 处理每个抽中结果
-    const results = [];
+    const results = []
     for (const drawnPrize of drawResults) {
-      if (!drawnPrize) continue;
-
-      // 找到对应的真实奖品记录
-      const prizeRecord = prizes.find(p => p.id === drawnPrize.id);
-      if (prizeRecord && prizeRecord.stock > 0) {
-        await prizeRecord.decrement('stock', { transaction: t });
+      // null 表示抽空
+      if (!drawnPrize) {
+        results.push(null)
+        continue
       }
+
+      const prizeRecord = prizes.find(p => p.id === drawnPrize.id)
+      if (!prizeRecord || prizeRecord.stock <= 0) {
+        results.push(null)
+        continue
+      }
+
+      await prizeRecord.decrement('stock', { transaction: t })
 
       // 添加到用户盒柜
       await UserCabinet.create({
@@ -473,8 +522,8 @@ router.post('/:id/draw', auth, drawAntiBrush(), drawRules, async (req, res) => {
         prize_id: drawnPrize.id,
         prize_name: drawnPrize.name,
         prize_rarity: drawnPrize.rarity,
-        draw_type: drawType,
-        cost: totalCost / count,
+        draw_type: drawTypeName,
+        cost: Math.round(totalCost / count * 100) / 100,
         order_id: order.id
       }, { transaction: t });
 
@@ -496,9 +545,10 @@ router.post('/:id/draw', auth, drawAntiBrush(), drawRules, async (req, res) => {
       data: {
         results,
         cost: totalCost,
-        remaining_coin: parseFloat(user.blind_box_coin) - totalCost,
-        draw_type: drawType,
-        order_no: orderNo
+        remaining_coin: parseFloat((userCoin - totalCost).toFixed(2)),
+        draw_type: drawTypeName,
+        order_no: orderNo,
+        count
       },
       message: '抽盒成功'
     });

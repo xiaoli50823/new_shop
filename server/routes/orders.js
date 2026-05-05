@@ -103,6 +103,53 @@ router.get('/', auth, adminOnly, paginationRules, async (req, res) => {
 });
 
 /**
+ * 获取当前用户的订单列表
+ */
+router.get('/my', auth, async (req, res) => {
+  try {
+    const { status, page = 1, pageSize = 20 } = req.query;
+    const where = { user_id: req.user.id };
+    if (status) where.status = status;
+
+    const { rows, count } = await Order.findAndCountAll({
+      where,
+      include: [{ model: OrderItem, as: 'items' }],
+      limit: parseInt(pageSize),
+      offset: (parseInt(page) - 1) * parseInt(pageSize),
+      order: [['id', 'DESC']]
+    });
+
+    res.json({
+      code: 200,
+      data: {
+        list: rows.map(order => ({
+          id: order.id,
+          order_no: order.order_no,
+          type: order.type,
+          status: order.status,
+          total: parseFloat(order.total) || 0,
+          items: (order.items || []).map(i => ({
+            id: i.id,
+            name: i.name || i.blind_box_name,
+            image: i.image,
+            quantity: i.quantity || 1,
+            price: parseFloat(i.price) || 0
+          })),
+          createdAt: order.created_at
+        })),
+        total: count,
+        page: parseInt(page),
+        pageSize: parseInt(pageSize)
+      },
+      message: 'success'
+    });
+  } catch (err) {
+    console.error('获取我的订单失败:', err);
+    res.status(500).json({ code: 500, message: '服务器内部错误' });
+  }
+});
+
+/**
  * 获取订单详情
  */
 router.get('/:id', auth, idParamRules, async (req, res) => {

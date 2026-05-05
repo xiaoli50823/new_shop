@@ -146,6 +146,10 @@ export const orderAPI = {
   /** 取消订单 */
   cancel(id: string | number) {
     return api.put(`/orders/${id}/cancel`) as Promise<any>
+  },
+  /** 获取我的订单 */
+  getMyOrders(params?: { status?: string; page?: number; pageSize?: number }) {
+    return api.get('/orders/my', { params }) as Promise<any>
   }
 }
 

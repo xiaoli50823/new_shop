@@ -44,6 +44,19 @@
         v-loading="loading"
         style="width: 100%"
       >
+        <el-table-column label="图片" width="90">
+          <template #default="{ row }">
+            <el-image
+              v-if="row.image"
+              :src="row.image"
+              :preview-src-list="[row.image]"
+              fit="cover"
+              style="width: 50px; height: 50px; border-radius: 6px;"
+              :preview-teleported="true"
+            />
+            <span v-else style="color: #999">无</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="name" label="奖品名称" min-width="160" show-overflow-tooltip />
         <el-table-column prop="blindBoxName" label="所属盲盒" min-width="160" show-overflow-tooltip />
@@ -99,6 +112,25 @@
         </el-form-item>
         <el-form-item label="奖品名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入奖品名称" />
+        </el-form-item>
+        <el-form-item label="奖品图片">
+          <div style="display: flex; gap: 12px; align-items: flex-start;">
+            <el-input
+              v-model="form.image"
+              placeholder="输入图片URL"
+              clearable
+              style="flex: 1"
+            />
+            <el-image
+              v-if="form.image"
+              :src="form.image"
+              fit="cover"
+              style="width: 60px; height: 60px; border-radius: 6px; border: 1px solid #e4e7ed; flex-shrink: 0;"
+              :preview-src-list="[form.image]"
+              preview-teleported
+            />
+            <span v-else style="width: 60px; height: 60px; border-radius: 6px; border: 1px dashed #dcdfe6; display: flex; align-items: center; justify-content: center; color: #c0c4cc; font-size: 20px; flex-shrink: 0;">?</span>
+          </div>
         </el-form-item>
         <el-form-item label="稀有度" prop="rarity">
           <el-select v-model="form.rarity" placeholder="请选择稀有度" style="width: 100%">
@@ -158,7 +190,8 @@ const defaultForm = () => ({
   name: '',
   rarity: 'common',
   probability: 0,
-  stock: 0
+  stock: 0,
+  image: ''
 })
 
 const form = reactive(defaultForm())
@@ -189,7 +222,8 @@ const openEditDialog = (row: any) => {
     name: row.name || '',
     rarity: row.rarity || 'common',
     probability: row.probability || 0,
-    stock: row.stock || 0
+    stock: row.stock || 0,
+    image: row.image || ''
   })
   dialogVisible.value = true
 }
@@ -205,7 +239,8 @@ const submitForm = async () => {
         name: form.name,
         rarity: form.rarity,
         probability: form.probability,
-        stock: form.stock
+        stock: form.stock,
+        image: form.image || null
       }
       if (isEdit.value) {
         await api.put(`/prizes/${form.id}`, payload)
