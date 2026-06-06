@@ -90,7 +90,7 @@
             @click="goDetail(item.id)"
           >
             <div class="hot-image-wrapper">
-              <img :src="item.coverImage || item.image" :alt="item.name" />
+              <img :src="item.coverImage || item.image || '/placeholder.svg'" :alt="item.name" />
               <span v-if="item.tag" class="hot-tag">{{ item.tag }}</span>
             </div>
             <h3 class="hot-name">{{ item.name }}</h3>
@@ -121,7 +121,7 @@
             class="category-card"
             @click="goDetail(item.id)"
           >
-            <img :src="item.coverImage || item.image" :alt="item.name" />
+            <img :src="item.coverImage || item.image || '/placeholder.svg'" :alt="item.name" />
             <h3>{{ item.name }}</h3>
             <span class="category-price">&yen;{{ item.price }}</span>
           </div>

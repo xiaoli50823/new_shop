@@ -2,7 +2,7 @@
   <div class="detail-page" v-loading="loading">
     <!-- 顶部大图 -->
     <div class="detail-cover">
-      <img :src="detail.coverImage || detail.image || '/placeholder.png'" :alt="detail.name" />
+      <img :src="detail.coverImage || detail.image || '/placeholder.svg'" :alt="detail.name" />
       <div class="cover-overlay">
         <div class="back-btn" @click="goBack">
           <el-icon><ArrowLeft /></el-icon>
@@ -51,7 +51,7 @@
           :class="getPrizeClass(prize.rarity)"
         >
           <div class="prize-img-wrap">
-            <img :src="prize.image || '/placeholder.png'" :alt="prize.name" />
+            <img :src="prize.image || '/placeholder.svg'" :alt="prize.name" />
           </div>
           <div class="prize-rarity">{{ getRarityLabel(prize.rarity) }}</div>
           <p class="prize-name">{{ prize.name }}</p>
@@ -137,7 +137,7 @@
                 <div class="front-question">?</div>
               </div>
               <div v-if="item" class="result-card-back">
-                <img :src="item.image || '/placeholder.png'" :alt="item.name" />
+                <img :src="item.image || '/placeholder.svg'" :alt="item.name" />
                 <div class="result-rarity" :class="getPrizeClass(item.rarity)">
                   {{ getRarityLabel(item.rarity) }}
                 </div>

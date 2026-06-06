@@ -33,7 +33,7 @@
         @click="goDetail(box.id)"
       >
         <div class="box-image">
-          <img :src="box.image || '/placeholder.png'" :alt="box.name" />
+          <img :src="box.image || '/placeholder.svg'" :alt="box.name" />
           <span v-if="box.tag" class="box-tag">{{ box.tag }}</span>
         </div>
         <div class="box-info">

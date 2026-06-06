@@ -1,7 +1,7 @@
 <template>
   <div class="blind-box-card" @click="goDetail">
     <div class="card-cover">
-      <img :src="box.coverImage || box.image || '/placeholder.png'" :alt="box.name" />
+      <img :src="box.coverImage || box.image || '/placeholder.svg'" :alt="box.name" />
       <div v-if="box.tag" class="card-tag" :class="tagClass">{{ box.tagText || box.tag }}</div>
       <div v-if="box.stockPercentage !== undefined && box.stockPercentage < 30" class="stock-warning">
         仅剩 {{ box.stockPercentage }}%

@@ -31,7 +31,7 @@
           <el-checkbox v-model="item.selected" @change="updateSelection" />
         </div>
         <div class="item-cover">
-          <img :src="item.image || item.coverImage || '/placeholder.png'" :alt="item.name" />
+          <img :src="item.image || item.coverImage || '/placeholder.svg'" :alt="item.name" />
         </div>
         <div class="item-info">
           <h4 class="item-name">{{ item.name }}</h4>
@@ -114,7 +114,7 @@
         <p class="recycle-tip">回收后将获得盲盒币（原价的80%）</p>
         <div class="recycle-items">
           <div v-for="item in recycleItems" :key="item.id" class="recycle-item">
-            <img :src="item.image || '/placeholder.png'" :alt="item.name" />
+            <img :src="item.image || '/placeholder.svg'" :alt="item.name" />
             <span class="recycle-name">{{ item.name }}</span>
             <span class="recycle-price">+{{ (item.recyclePrice || item.price * 0.8).toFixed(2) }} 币</span>
           </div>

@@ -33,7 +33,7 @@
         <span>商品信息</span>
       </div>
       <div class="product-info">
-        <img :src="order.image || order.coverImage || '/placeholder.png'" class="product-img" />
+        <img :src="order.image || order.coverImage || '/placeholder.svg'" class="product-img" />
         <div class="product-detail">
           <h4 class="product-name">{{ order.name || order.blindBoxName }}</h4>
           <p class="product-desc">{{ order.description || '' }}</p>

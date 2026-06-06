@@ -32,7 +32,7 @@
         @click="goDetail(item.id)"
       >
         <div class="product-image">
-          <img :src="item.image || '/placeholder.png'" :alt="item.name" />
+          <img :src="item.image || '/placeholder.svg'" :alt="item.name" />
           <span class="new-badge">NEW</span>
         </div>
         <div class="product-info">

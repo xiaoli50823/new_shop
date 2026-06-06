@@ -50,7 +50,7 @@
           @click="goDetail(item.id)"
         >
           <div class="item-cover">
-            <img :src="item.coverImage || item.image || '/placeholder.png'" :alt="item.name" />
+            <img :src="item.coverImage || item.image || '/placeholder.svg'" :alt="item.name" />
             <div v-if="item.tag" class="item-tag" :class="getTagClass(item.tag)">{{ item.tag }}</div>
           </div>
           <div class="item-info">
@@ -72,7 +72,7 @@
           @click="goDetail(item.id)"
         >
           <div class="item-cover">
-            <img :src="item.coverImage || item.image || '/placeholder.png'" :alt="item.name" />
+            <img :src="item.coverImage || item.image || '/placeholder.svg'" :alt="item.name" />
             <div v-if="item.tag" class="item-tag" :class="getTagClass(item.tag)">{{ item.tag }}</div>
           </div>
           <div class="item-info">

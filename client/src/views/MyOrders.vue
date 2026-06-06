@@ -37,7 +37,7 @@
         <div class="order-items">
           <div v-for="item in (order.items || [])" :key="item.id" class="order-item">
             <div class="item-img-wrap">
-              <img :src="item.image || '/placeholder.png'" :alt="item.name" />
+              <img :src="item.image || '/placeholder.svg'" :alt="item.name" />
             </div>
             <span class="item-name">{{ item.name }}</span>
             <span class="item-qty">x{{ item.quantity || 1 }}</span>

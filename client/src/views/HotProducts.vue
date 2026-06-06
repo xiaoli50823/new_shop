@@ -33,7 +33,7 @@
         @click="goDetail(product.id)"
       >
         <div class="product-image">
-          <img :src="product.coverImage || product.image || '/placeholder.png'" :alt="product.name" />
+          <img :src="product.coverImage || product.image || '/placeholder.svg'" :alt="product.name" />
           <span v-if="product.tag" class="product-tag">{{ product.tag }}</span>
         </div>
         <div class="product-info">
