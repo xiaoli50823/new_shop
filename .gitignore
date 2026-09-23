@@ -14,3 +14,13 @@ dist/
 盲盒星球*.pptx
 附件*.zip
 附件*.docx
+
+# Python 自动化测试
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+
+# Playwright 产物
+playwright-report/
+test-results/

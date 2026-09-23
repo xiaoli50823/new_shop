@@ -165,7 +165,7 @@ stateDiagram-v2
 | 接口冒烟 | `scripts/smoke-features.js` | 角色权限、缓存响应头、问答参数校验（只读数据库，不产生脏数据） |
 | 数据校验 | SQL | 结合数据库校验接口响应与业务数据一致性 |
 
-> 说明：以上为仓库内已落地的自动化测试资产。此外本项目的质量保障方案还包括 **Pytest + Requests 接口自动化**（鉴权 Fixture、YAML 参数化、公共断言）与 **Playwright UI 自动化**（核心流程回归），用于版本回归与冒烟。
+> 说明：上表是仓库内已落地的自动化测试资产；**Pytest + Requests 接口自动化**（鉴权 Fixture、YAML 参数化、公共断言）、**Playwright UI 自动化**（核心流程回归）、SQL 数据校验与接口冒烟脚本统一放在 [`automation/`](./automation) 目录，用法见 [自动化测试工程说明](./automation/README.md)。
 
 运行方式：
 
@@ -293,6 +293,10 @@ new_shop/
 │   ├── seeders/               # 数据初始化 / 清空
 │   ├── index.js               # 入口文件
 │   └── package.json
+├── automation/                # Python 自动化测试（接口/UI/冒烟）
+│   ├── tests_api/             # Pytest + Requests 接口自动化
+│   ├── tests_ui/              # Playwright UI 自动化
+│   └── smoke/                 # 接口冒烟脚本
 ├── API接口文档.md             # 接口文档
 ├── Redis与智能问答设计.md      # 缓存与问答设计说明
 └── README.md

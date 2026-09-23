@@ -1,0 +1,17 @@
+# 接口自动化参数化用例（$KEY 会被 config 中的环境变量替换）
+login:
+  - name: 登录成功
+    email: $USER_EMAIL
+    password: $USER_PASSWORD
+    expect_http: 200
+    expect_code: 200
+  - name: 密码错误
+    email: $USER_EMAIL
+    password: "wrong-password"
+    expect_http: 401
+    expect_code: 401
+  - name: 邮箱格式错误
+    email: "not-an-email"
+    password: "wrong-password"
+    expect_http: 400
+    expect_code: 400
