@@ -2,6 +2,7 @@
  * 盲盒路由
  */
 const express = require('express');
+const { cacheResponse, invalidateCache } = require('../utils/cache');
 const { Op } = require('sequelize');
 const { BlindBox, Prize, User, UserCabinet, DrawRecord, Order, sequelize, Category } = require('../models');
 const { auth, adminOnly } = require('../middleware/auth');
@@ -15,7 +16,7 @@ const router = express.Router();
  * 获取热门盲盒
  * GET /api/blind-boxes/hot
  */
-router.get('/hot', async (req, res) => {
+router.get('/hot', cacheResponse('blind-boxes', 30), async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 6;
     
@@ -59,7 +60,7 @@ router.get('/hot', async (req, res) => {
  * 获取无限盲盒
  * GET /api/blind-boxes/infinite
  */
-router.get('/infinite', async (req, res) => {
+router.get('/infinite', cacheResponse('blind-boxes', 60), async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 20;
     const { category } = req.query;
@@ -113,7 +114,7 @@ router.get('/infinite', async (req, res) => {
  * 获取新品盲盒
  * GET /api/blind-boxes/new
  */
-router.get('/new', async (req, res) => {
+router.get('/new', cacheResponse('blind-boxes', 60), async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 20;
     const { category } = req.query;
@@ -168,7 +169,7 @@ router.get('/new', async (req, res) => {
  * 获取分类盲盒
  * GET /api/blind-boxes/category/:category
  */
-router.get('/category/:category', async (req, res) => {
+router.get('/category/:category', cacheResponse('blind-boxes', 60), async (req, res) => {
   try {
     const { category } = req.params;
     const limit = parseInt(req.query.limit) || 12;
@@ -221,7 +222,7 @@ router.get('/category/:category', async (req, res) => {
 /**
  * 获取盲盒列表（支持分页、筛选类型、搜索）
  */
-router.get('/', paginationRules, async (req, res) => {
+router.get('/', paginationRules, cacheResponse('blind-boxes'), async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const pageSize = parseInt(req.query.pageSize) || 20;
@@ -277,7 +278,7 @@ router.get('/', paginationRules, async (req, res) => {
 /**
  * 获取盲盒详情（含奖品列表）
  */
-router.get('/:id', idParamRules, async (req, res) => {
+router.get('/:id', idParamRules, cacheResponse('blind-boxes', 15), async (req, res) => {
   try {
     const blindBox = await BlindBox.findByPk(req.params.id, {
       include: [{ model: Prize, as: 'prizes', order: [['rarity', 'ASC']] }]
@@ -315,6 +316,7 @@ router.post('/', auth, adminOnly, createBlindBoxRules, async (req, res) => {
     }
 
     await t.commit();
+    await invalidateCache('blind-boxes');
 
     // 返回含奖品的完整数据
     const result = await BlindBox.findByPk(blindBox.id, {
@@ -361,6 +363,7 @@ router.put('/:id', auth, adminOnly, idParamRules, async (req, res) => {
     }
 
     await t.commit();
+    await invalidateCache('blind-boxes');
 
     const result = await BlindBox.findByPk(blindBox.id, {
       include: [{ model: Prize, as: 'prizes' }]
@@ -384,6 +387,7 @@ router.delete('/:id', auth, adminOnly, idParamRules, async (req, res) => {
       return res.status(404).json({ code: 404, message: '盲盒不存在' });
     }
     await blindBox.update({ status: 'inactive' });
+    await invalidateCache('blind-boxes');
     res.json({ code: 200, message: '删除成功' });
   } catch (err) {
     console.error('删除盲盒失败:', err);
@@ -539,6 +543,7 @@ router.post('/:id/draw', auth, drawAntiBrush(), drawRules, async (req, res) => {
     await blindBox.increment('total_draws', { by: count, transaction: t });
 
     await t.commit();
+    await invalidateCache('blind-boxes');
 
     res.json({
       code: 200,

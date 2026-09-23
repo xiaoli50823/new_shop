@@ -174,6 +174,7 @@ const orderTypes = ref([
 ])
 
 const services = ref([
+  { label: '智能问答', action: () => router.push('/assistant') },
   { label: '收藏夹', action: () => goToEntry('favorites') },
   { label: '浏览记录', action: () => goToEntry('history') },
   { label: '帮助中心', action: () => goToEntry('help') },
@@ -202,8 +203,7 @@ const goSettings = () => router.push('/settings')
 const goPointsMall = () => router.push('/points-mall')
 const recharge = (type: string) => router.push('/recharge')
 const handleLogout = () => {
-  localStorage.removeItem('token')
-  router.push('/login')
+  userStore.logout()
 }
 
 onMounted(() => {

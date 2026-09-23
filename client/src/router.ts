@@ -2,6 +2,12 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
 const routes: RouteRecordRaw[] = [
   {
+    path: '/assistant',
+    name: 'Assistant',
+    component: () => import('@/views/Assistant.vue'),
+    meta: { title: '智能问答', requiresAuth: true }
+  },
+  {
     path: '/',
     name: 'Home',
     component: () => import('@/views/Home.vue'),
@@ -110,6 +116,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '管理后台' },
     children: [
       {
+        path: 'cache',
+        name: 'AdminCache',
+        component: () => import('@/views/admin/CacheManage.vue'),
+        meta: { title: '缓存与智能问答', requiresAuth: true, requiresAdmin: true }
+      },
+      {
         path: '',
         redirect: '/admin/dashboard'
       },
@@ -162,6 +174,10 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '系统设置' }
       }
     ]
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: '/'
   }
 ]
 
@@ -174,20 +190,29 @@ const router = createRouter({
 })
 
 // 路由守卫
-router.beforeEach((to, _from, next) => {
+router.beforeEach((to) => {
   // 设置页面标题
   document.title = `${to.meta.title || '盲盒星球'} - 盲盒星球`
 
-  // 检查是否需要登录
-  if (to.meta.requiresAuth) {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      next({ path: '/login', query: { redirect: to.fullPath } })
-      return
-    }
+  const token = localStorage.getItem('token')
+  const isPublicPage = to.path === '/login' || to.path === '/register'
+  if (!token && !isPublicPage) {
+    return { path: '/login', query: { redirect: to.fullPath }, replace: true }
   }
 
-  next()
+  if (token && isPublicPage) {
+    const redirect = typeof to.query.redirect === 'string' ? to.query.redirect : ''
+    return redirect.startsWith('/') && !redirect.startsWith('//') &&
+      !redirect.startsWith('/login') && !redirect.startsWith('/register')
+      ? redirect : '/'
+  }
+
+  if (to.matched.some(record => record.path === '/admin')) {
+    try {
+      const user = JSON.parse(localStorage.getItem('userInfo') || '{}')
+      if (user.role !== 'admin') return '/'
+    } catch { return '/' }
+  }
 })
 
 export default router

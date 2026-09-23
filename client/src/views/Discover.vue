@@ -138,7 +138,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Search, Filter } from '@element-plus/icons-vue'
-import { blindBoxAPI } from '@/services/api'
+import api, { blindBoxAPI } from '@/services/api'
 import { formatPrice, formatCount } from '@/utils/format'
 
 const router = useRouter()
@@ -275,7 +275,7 @@ const goDetail = (id: number | string) => {
 
 onMounted(() => {
   if (route.query.category) {
-    const cat = categories.find(c => c.label === route.query.category || c.value === route.query.category)
+    const cat = categories.value.find(c => c.label === route.query.category || c.value === route.query.category)
     if (cat) activeCategory.value = cat.value
   }
   fetchList(true)

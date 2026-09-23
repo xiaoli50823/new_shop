@@ -78,12 +78,13 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, User, Message, Lock, Phone, View, Hide } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 
 const form = reactive({
@@ -97,7 +98,7 @@ const showPassword = ref(false)
 const loading = ref(false)
 
 const goBack = () => router.back()
-const goLogin = () => router.push('/login')
+const goLogin = () => router.push({ path: '/login', query: route.query })
 
 const handleRegister = async () => {
   if (!form.username.trim()) {

@@ -1,4 +1,5 @@
 const express = require('express');
+const { cacheResponse, invalidateCache } = require('../utils/cache');
 const { query, body } = require('express-validator');
 const { Op } = require('sequelize');
 const Category = require('../models/Category');
@@ -8,7 +9,7 @@ const { auth, adminOnly } = require('../middleware/auth');
 const router = express.Router();
 
 // 公开接口：获取所有分类（客户端用）
-router.get('/', async (req, res) => {
+router.get('/', cacheResponse('categories', 300), async (req, res) => {
   try {
     const categories = await Category.findAll({
       where: { status: 'active' },
@@ -89,6 +90,7 @@ router.post('/', auth, adminOnly, async (req, res) => {
       status: 'active'
     });
 
+    await invalidateCache('categories', 'blind-boxes');
     res.status(201).json({ code: 200, data: category, message: '创建成功' });
   } catch (err) {
     res.status(400).json({ code: 400, message: err.message });
@@ -108,6 +110,7 @@ router.put('/:id', auth, adminOnly, async (req, res) => {
     }
 
     await category.update(updateData);
+    await invalidateCache('categories', 'blind-boxes');
     res.json({ code: 200, data: category, message: '更新成功' });
   } catch (err) {
     res.status(400).json({ code: 400, message: err.message });
@@ -126,6 +129,7 @@ router.delete('/:id', auth, adminOnly, async (req, res) => {
     }
 
     await category.destroy();
+    await invalidateCache('categories', 'blind-boxes');
     res.json({ code: 200, message: '删除成功' });
   } catch (err) {
     res.status(500).json({ code: 500, message: '服务器内部错误' });

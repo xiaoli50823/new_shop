@@ -2,6 +2,7 @@
  * 奖品管理路由
  */
 const express = require('express');
+const { invalidateCache } = require('../utils/cache');
 const router = express.Router();
 const { Prize, BlindBox } = require('../models');
 const { auth, adminOnly } = require('../middleware/auth');
@@ -45,6 +46,7 @@ router.get('/:id', auth, adminOnly, async (req, res) => {
 router.post('/', auth, adminOnly, async (req, res) => {
   try {
     const prize = await Prize.create(req.body);
+    await invalidateCache('blind-boxes');
     res.status(201).json({ code: 200, data: prize, message: '创建成功' });
   } catch (err) {
     res.status(400).json({ code: 400, message: err.message });
@@ -62,6 +64,7 @@ router.put('/:id', auth, adminOnly, async (req, res) => {
       delete updateData.blindBoxId;
     }
     await prize.update(updateData);
+    await invalidateCache('blind-boxes');
     const updated = await Prize.findByPk(req.params.id, { include: [{ model: BlindBox, as: 'blindBox', attributes: ['id', 'name'] }] });
     res.json({ code: 200, data: updated, message: '更新成功' });
   } catch (err) {
@@ -75,6 +78,7 @@ router.delete('/:id', auth, adminOnly, async (req, res) => {
     const prize = await Prize.findByPk(req.params.id);
     if (!prize) return res.status(404).json({ code: 404, message: '奖品不存在' });
     await prize.destroy();
+    await invalidateCache('blind-boxes');
     res.json({ code: 200, message: '删除成功' });
   } catch (err) {
     res.status(500).json({ code: 500, message: err.message });

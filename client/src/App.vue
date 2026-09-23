@@ -2,6 +2,7 @@
   <div id="app">
     <router-view />
     <BottomTabBar v-if="showTabBar" />
+    <router-link v-if="userStore.isLoggedIn && !route.path.startsWith('/admin') && route.path !== '/assistant' && route.path !== '/login' && route.path !== '/register'" to="/assistant" class="assistant-entry">智能问答 ↗</router-link>
   </div>
 </template>
 
@@ -23,6 +24,8 @@ const showTabBar = computed(() => {
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap');
+
+.assistant-entry { position: fixed; right: 24px; bottom: 80px; z-index: 998; padding: 12px 18px; background: #3A5068; color: #fff; border-radius: 24px; text-decoration: none; box-shadow: 0 4px 16px #0002; font-size: 13px; }
 
 :root {
   --ink: #3A5068;

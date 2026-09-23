@@ -21,6 +21,8 @@ interface UserInfo {
   isCheckedIn?: boolean
   inviteCode?: string
   role?: string
+  balance?: string | number
+  drawCount?: number
 }
 
 export const useUserStore = defineStore('user', () => {
@@ -42,13 +44,17 @@ export const useUserStore = defineStore('user', () => {
       const res = await authAPI.login({ email, password })
       const data = res.data || res
       token.value = data.token || ''
+      if (!token.value) throw new Error('登录响应缺少令牌')
       localStorage.setItem('token', token.value)
+      userInfo.value = data.user || null
+      if (userInfo.value) localStorage.setItem('userInfo', JSON.stringify(userInfo.value))
       await fetchUserInfo()
+      if (!token.value) return false
       initWebSocket()
       ElMessage.success('登录成功')
       
       const redirect = router.currentRoute.value.query.redirect as string
-      if (redirect) {
+      if (redirect?.startsWith('/') && !redirect.startsWith('//') && !redirect.startsWith('/login') && !redirect.startsWith('/register')) {
         router.push(redirect)
       } else if (userInfo.value?.role === 'admin') {
         router.push('/admin')
@@ -70,8 +76,10 @@ export const useUserStore = defineStore('user', () => {
         localStorage.setItem('token', token.value)
         await fetchUserInfo()
       }
+      if (!token.value) return false
       ElMessage.success('注册成功')
-      router.push('/')
+      const redirect = router.currentRoute.value.query.redirect
+      router.push(typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//') && !redirect.startsWith('/login') && !redirect.startsWith('/register') ? redirect : '/')
       return true
     } catch (error: any) {
       return false
@@ -85,18 +93,19 @@ export const useUserStore = defineStore('user', () => {
       userInfo.value = res.data || res
       localStorage.setItem('userInfo', JSON.stringify(userInfo.value))
     } catch (error) {
-      // Token invalid, clear
-      logout()
+      // 401 is handled by the API interceptor; a network outage should keep the session.
     }
   }
 
-  function logout() {
+  function logout(redirect?: string) {
     wsService.disconnect()
     token.value = ''
     userInfo.value = null
     localStorage.removeItem('token')
     localStorage.removeItem('userInfo')
-    router.push('/login')
+    if (router.currentRoute.value.path !== '/login') {
+      router.replace({ path: '/login', query: redirect && redirect.startsWith('/') && !redirect.startsWith('//') ? { redirect } : {} })
+    }
   }
 
   // Initialize from localStorage

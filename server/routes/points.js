@@ -2,6 +2,7 @@
  * 积分商品路由
  */
 const express = require('express');
+const { cacheResponse, invalidateCache } = require('../utils/cache');
 const { Op } = require('sequelize');
 const { PointsProduct, PointsExchange, User, sequelize } = require('../models');
 const { auth } = require('../middleware/auth');
@@ -12,7 +13,7 @@ const router = express.Router();
 /**
  * 获取积分商品列表
  */
-router.get('/', async (req, res) => {
+router.get('/', cacheResponse('points', 30), async (req, res) => {
   try {
     const { category, page = 1, pageSize = 20 } = req.query;
 
@@ -61,7 +62,7 @@ router.get('/', async (req, res) => {
 /**
  * 获取积分商品详情
  */
-router.get('/:id', async (req, res) => {
+router.get('/:id', cacheResponse('points', 30), async (req, res) => {
   try {
     const product = await PointsProduct.findByPk(req.params.id);
 
@@ -135,6 +136,7 @@ router.post('/exchange', auth, async (req, res) => {
     }, { transaction: t });
 
     await t.commit();
+    await invalidateCache('points');
 
     const updatedUser = await User.findByPk(userId);
     notifyPointsChange(userId, updatedUser.points, '积分兑换');

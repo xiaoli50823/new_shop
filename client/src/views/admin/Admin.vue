@@ -57,6 +57,10 @@
           <el-icon><Setting /></el-icon>
           <template #title>系统设置</template>
         </el-menu-item>
+        <el-menu-item index="/admin/cache">
+          <el-icon><DataAnalysis /></el-icon>
+          <template #title>缓存与智能问答</template>
+        </el-menu-item>
       </el-menu>
     </aside>
 
@@ -134,9 +138,11 @@ import { ref, computed, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { ArrowDown, User, Lock, SwitchButton, Expand, Fold, TrendCharts, Box, Present, Menu, List, DataAnalysis, Setting } from '@element-plus/icons-vue'
+import { useUserStore } from '@/stores/user'
 
 const route = useRoute()
 const router = useRouter()
+const userStore = useUserStore()
 
 const isCollapsed = ref(false)
 const adminName = ref('管理员')
@@ -146,6 +152,7 @@ const passwordFormRef = ref<FormInstance>()
 const activeMenu = computed(() => route.path)
 
 const breadcrumbMap: Record<string, string> = {
+  '/admin/cache': '缓存与智能问答',
   '/admin/dashboard': '数据大盘',
   '/admin/blind-box': '盲盒管理',
   '/admin/prizes': '奖品管理',
@@ -205,10 +212,9 @@ const handleCommand = (cmd: string) => {
         cancelButtonText: '取消',
         type: 'warning'
       }).then(() => {
-        localStorage.removeItem('token')
+        userStore.logout()
         localStorage.removeItem('adminInfo')
         ElMessage.success('已退出登录')
-        router.push('/')
       }).catch(() => {})
       break
   }

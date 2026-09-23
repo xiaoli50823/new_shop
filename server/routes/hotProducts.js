@@ -2,6 +2,7 @@
  * 热门周边路由
  */
 const express = require('express');
+const { cacheResponse, invalidateCache } = require('../utils/cache');
 const { Op } = require('sequelize');
 const { HotProduct, Cart, User, Order, OrderItem, sequelize } = require('../models');
 const { auth, adminOnly } = require('../middleware/auth');
@@ -13,7 +14,7 @@ const router = express.Router();
 /**
  * 获取热门周边列表
  */
-router.get('/', paginationRules, async (req, res) => {
+router.get('/', paginationRules, cacheResponse('hot-products'), async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const pageSize = parseInt(req.query.pageSize) || 20;
@@ -53,7 +54,7 @@ router.get('/', paginationRules, async (req, res) => {
 /**
  * 获取热门周边详情
  */
-router.get('/:id', async (req, res) => {
+router.get('/:id', cacheResponse('hot-products', 30), async (req, res) => {
   try {
     const product = await HotProduct.findByPk(req.params.id);
     if (!product) {
@@ -72,6 +73,7 @@ router.get('/:id', async (req, res) => {
 router.post('/', auth, adminOnly, async (req, res) => {
   try {
     const product = await HotProduct.create(req.body);
+    await invalidateCache('hot-products');
     res.status(201).json({ code: 200, data: product, message: '创建成功' });
   } catch (err) {
     console.error('创建热门周边失败:', err);
@@ -89,6 +91,7 @@ router.put('/:id', auth, adminOnly, async (req, res) => {
       return res.status(404).json({ code: 404, message: '商品不存在' });
     }
     await product.update(req.body);
+    await invalidateCache('hot-products');
     res.json({ code: 200, data: product, message: '更新成功' });
   } catch (err) {
     console.error('更新热门周边失败:', err);
@@ -106,6 +109,7 @@ router.delete('/:id', auth, adminOnly, async (req, res) => {
       return res.status(404).json({ code: 404, message: '商品不存在' });
     }
     await product.destroy();
+    await invalidateCache('hot-products');
     res.json({ code: 200, message: '删除成功' });
   } catch (err) {
     console.error('删除热门周边失败:', err);
@@ -164,6 +168,7 @@ router.post('/:id/buy', auth, async (req, res) => {
     }, { transaction: t });
 
     await t.commit();
+    await invalidateCache('hot-products');
 
     notifyCoinChange(userId, user.blind_box_coin, '购买热门周边');
 

@@ -1,6 +1,7 @@
 import axios, { type AxiosInstance, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
+import { useUserStore } from '@/stores/user'
 
 // 创建 axios 实例
 const api: AxiosInstance = axios.create({
@@ -38,16 +39,17 @@ api.interceptors.response.use(
   },
   (error) => {
     if (error.response) {
+      // Error details for chat belong in the conversation; preserve global 401 handling.
+      if (error.config?.url === '/ai/chat' && error.response.status !== 401) return Promise.reject(error)
       const { status, config } = error.response
       if (status === 401) {
         const isAuthEndpoint = config.url?.startsWith('/auth/login') || config.url?.startsWith('/auth/register')
         if (isAuthEndpoint) {
           ElMessage.error(error.response.data?.message || '邮箱或密码错误')
         } else {
-          localStorage.removeItem('token')
-          localStorage.removeItem('userInfo')
+          const redirect = router.currentRoute.value.fullPath
+          useUserStore().logout(redirect)
           ElMessage.error('登录已过期，请重新登录')
-          router.push('/login')
         }
       } else if (status === 403) {
         ElMessage.error('没有权限访问')
@@ -58,6 +60,8 @@ api.interceptors.response.use(
       } else {
         ElMessage.error(error.response.data?.message || '请求失败')
       }
+    } else if (axios.isCancel(error)) {
+      return Promise.reject(error)
     } else if (error.message?.includes('timeout')) {
       ElMessage.error('请求超时，请重试')
     } else {

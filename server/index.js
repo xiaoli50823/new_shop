@@ -34,6 +34,8 @@ const checkInRoutes = require('./routes/checkIn');
 const hotProductRoutes = require('./routes/hotProducts');
 const addressRoutes = require('./routes/address');
 const categoryRoutes = require('./routes/categories');
+const cacheRoutes = require('./routes/cache');
+const aiRoutes = require('./routes/ai');
 
 // 创建 Express 应用
 const app = express();
@@ -62,6 +64,8 @@ app.use('/api/check-in', checkInRoutes);
 app.use('/api/hot-products', hotProductRoutes);
 app.use('/api/addresses', addressRoutes);
 app.use('/api/categories', categoryRoutes);
+app.use('/api/cache', cacheRoutes);
+app.use('/api/ai', aiRoutes);
 
 // 健康检查
 app.get('/api/health', async (req, res) => {
@@ -95,8 +99,12 @@ async function start() {
 
     // 同步模型到数据库（添加新字段）
     try {
-      await sequelize.sync({ force: false, alter: true });
-      console.log('✅ 数据库表结构同步完成');
+      if (process.env.DB_SYNC !== 'false') {
+        await sequelize.sync({ force: false, alter: true });
+        console.log('✅ 数据库表结构同步完成');
+      } else {
+        console.log('ℹ️ 已跳过数据库表结构同步（DB_SYNC=false）');
+      }
     } catch (err) {
       console.log('⚠️ 数据库同步跳过:', err.message);
     }
@@ -115,6 +123,6 @@ async function start() {
   }
 }
 
-start();
+if (require.main === module) start();
 
 module.exports = app;

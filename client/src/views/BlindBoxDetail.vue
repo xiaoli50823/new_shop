@@ -83,7 +83,7 @@
 
     <!-- 开盒动画遮罩 -->
     <transition name="box-fade">
-      <div v-if="showBoxAnimation" class="box-animation-overlay" @click="skipToResult">
+      <div v-if="showBoxAnimation" class="box-animation-overlay">
         <div class="box-animation-stage">
           <!-- 盲盒主体 -->
           <div class="mystery-box" :class="animationPhase">
@@ -180,7 +180,6 @@ const currentDrawType = ref('single')
 const showBoxAnimation = ref(false)
 const animationPhase = ref<'closed' | 'shaking' | 'opening' | 'opened'>('closed')
 const animationHint = ref('')
-const skipToResult = ref(false)
 
 // 弹窗
 const showResult = ref(false)

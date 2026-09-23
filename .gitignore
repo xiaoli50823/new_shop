@@ -4,3 +4,13 @@ dist/
 *.log
 .DS_Store
 .vite/
+.runtime/
+
+# Word/Office 临时锁文件
+~$*
+
+# 答辩与提交材料（本地保留，不纳入代码仓库）
+盲盒星球*.docx
+盲盒星球*.pptx
+附件*.zip
+附件*.docx
