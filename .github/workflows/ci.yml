@@ -29,7 +29,9 @@ jobs:
             server/package-lock.json
 
       - name: Install Node.js dependencies
-        run: npm run install:all
+        run: |
+          npm run install:all
+          npm install --prefix client --no-save --package-lock=false @rollup/rollup-linux-x64-gnu@4.60.1
 
       - name: Run server tests
         run: npm run test:server
@@ -119,6 +121,7 @@ jobs:
       - name: Install dependencies
         run: |
           npm run install:all
+          npm install --prefix client --no-save --package-lock=false @rollup/rollup-linux-x64-gnu@4.60.1
           python -m pip install -r automation/requirements.txt
           python -m playwright install --with-deps chromium
 
