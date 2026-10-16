@@ -48,15 +48,17 @@ def client(base_url):
 
 
 @pytest.fixture()
-def user_client(client, user_token):
-    client.set_token(user_token)
-    return client
+def user_client(base_url, user_token):
+    user = ApiClient(base_url)
+    user.set_token(user_token)
+    return user
 
 
 @pytest.fixture()
-def admin_client(client, admin_token):
-    client.set_token(admin_token)
-    return client
+def admin_client(base_url, admin_token):
+    admin = ApiClient(base_url)
+    admin.set_token(admin_token)
+    return admin
 
 
 @pytest.fixture(scope="session")
