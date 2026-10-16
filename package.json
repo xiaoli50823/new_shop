@@ -1,14 +1,24 @@
 {
   "name": "new_shop",
   "version": "1.0.0",
-  "description": "## 系统架构",
+  "description": "盲盒星球商城系统：Vue 3、Express、MySQL、Redis 与自动化测试",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "install:all": "npm ci --prefix client && npm ci --prefix server",
+    "build": "npm run build --prefix client",
+    "test:server": "npm test --prefix server",
+    "test": "npm run test:server && npm run build"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "vue3",
+    "express",
+    "mysql",
+    "redis",
+    "pytest",
+    "playwright"
+  ],
+  "author": "xiaoli50823",
+  "license": "MIT",
   "dependencies": {
     "pptxgenjs": "^4.0.1"
   }

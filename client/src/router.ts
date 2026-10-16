@@ -110,10 +110,22 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '充值', requiresAuth: true }
   },
   {
+    path: '/coupons',
+    name: 'Coupons',
+    component: () => import('@/views/Coupons.vue'),
+    meta: { title: '我的优惠券', requiresAuth: true }
+  },
+  {
+    path: '/orders',
+    name: 'MyOrders',
+    component: () => import('@/views/MyOrders.vue'),
+    meta: { title: '我的订单', requiresAuth: true }
+  },
+  {
     path: '/admin',
     name: 'Admin',
     component: () => import('@/views/admin/Admin.vue'),
-    meta: { title: '管理后台' },
+    meta: { title: '管理后台', requiresAuth: true, requiresAdmin: true },
     children: [
       {
         path: 'cache',
@@ -195,19 +207,20 @@ router.beforeEach((to) => {
   document.title = `${to.meta.title || '盲盒星球'} - 盲盒星球`
 
   const token = localStorage.getItem('token')
-  const isPublicPage = to.path === '/login' || to.path === '/register'
-  if (!token && !isPublicPage) {
+  const isAuthPage = to.path === '/login' || to.path === '/register'
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
+  if (!token && requiresAuth) {
     return { path: '/login', query: { redirect: to.fullPath }, replace: true }
   }
 
-  if (token && isPublicPage) {
+  if (token && isAuthPage) {
     const redirect = typeof to.query.redirect === 'string' ? to.query.redirect : ''
     return redirect.startsWith('/') && !redirect.startsWith('//') &&
       !redirect.startsWith('/login') && !redirect.startsWith('/register')
       ? redirect : '/'
   }
 
-  if (to.matched.some(record => record.path === '/admin')) {
+  if (to.matched.some(record => record.meta.requiresAdmin)) {
     try {
       const user = JSON.parse(localStorage.getItem('userInfo') || '{}')
       if (user.role !== 'admin') return '/'

@@ -24,3 +24,7 @@ __pycache__/
 # Playwright 产物
 playwright-report/
 test-results/
+
+# Allure 测试报告
+allure-results/
+allure-report/

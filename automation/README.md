@@ -8,9 +8,10 @@
 | --- | --- | --- |
 | 接口自动化 | Pytest + Requests | 封装鉴权 Fixture、YAML 参数化、公共断言，覆盖登录/购物车/订单等接口 |
 | 数据校验 | PyMySQL | 结合 SQL 校验接口响应与数据库落库数据一致性 |
-| UI 自动化 | Playwright | 回归核心 UI 流程（登录跳转、路由守卫、首页加载） |
+| UI 自动化 | Playwright | 回归核心 UI 流程（公开首页、登录跳转、路由守卫） |
 | 缓存专项 | Requests | 覆盖缓存响应头、命中、并发加载、角色权限 |
 | 接口冒烟 | 独立脚本 | 只读检查角色权限、缓存响应、问答参数校验 |
+| 测试报告 | Allure | 本地生成结果，CI 中生成 HTML 报告并上传构建产物 |
 
 > 更深层的 Redis「写后失效 / 故障回源」场景由后端 `server/test/cache.test.js` 覆盖；本工程侧重从接口与 UI 视角做端到端回归。
 
@@ -92,10 +93,16 @@ pytest -m redis
 pytest tests_ui
 
 # 全部（接口 + UI）
-pytest tests_api tests_ui
+pytest tests_api tests_ui --alluredir=allure-results --clean-alluredir
 
 # 接口冒烟脚本（不依赖 pytest）
 python -m smoke.smoke_interface
+```
+
+GitHub Actions 会将 `allure-results` 转换成 HTML，并上传名为 `allure-report-<运行编号>` 的构建产物。本地安装 Allure 命令行后可执行：
+
+```bash
+allure serve allure-results
 ```
 
 `pytest.ini` 中已注册标记：`api`、`ui`、`redis`、`smoke`，可按需使用 `-m` 过滤。

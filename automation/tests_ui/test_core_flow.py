@@ -27,4 +27,5 @@ def test_login_success_and_redirect(page, frontend_url):
 def test_home_page_loads(page, frontend_url):
     page.goto(f"{frontend_url}/")
     page.wait_for_load_state("networkidle")
+    assert page.url.rstrip("/") == frontend_url.rstrip("/")
     assert "盲盒星球" in page.title()

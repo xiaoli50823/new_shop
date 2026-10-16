@@ -19,6 +19,6 @@ ADMIN_PASSWORD = _env("AUTOMATION_ADMIN_PASSWORD", "admin123")
 # 数据库（用于 SQL 数据校验）
 DB_HOST = _env("AUTOMATION_DB_HOST", "localhost")
 DB_PORT = int(_env("AUTOMATION_DB_PORT", "3306"))
-DB_NAME = _env("AUTOMATION_DB_NAME", "blind_box_mall")
+DB_NAME = _env("AUTOMATION_DB_NAME", "blind_box_shop")
 DB_USER = _env("AUTOMATION_DB_USER", "root")
 DB_PASSWORD = _env("AUTOMATION_DB_PASSWORD", "")
